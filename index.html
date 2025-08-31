@@ -1,0 +1,3775 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 聊天模拟器</title>
+<style>
+/* --- 全局样式，保持不变 --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+body {
+    height: 100vh;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.phone-frame {
+    width: 360px;
+    height: 640px;
+    border-radius: 32px;
+    overflow: hidden;
+    position: relative;
+    background: #000;
+    border: 4px solid white; /* 手机边框加粗 */
+}
+
+/* --- OPPO 流体云样式 --- */
+.fluid-cloud {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140px;
+    height: 28px;
+    background-color: #000;
+    border-radius: 14px;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.screen {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    overflow: hidden;
+    display: none; /* 默认隐藏所有屏幕 */
+    flex-direction: column; /* 默认使用flex布局 */
+}
+.screen.active {
+    display: flex; /* 显示当前激活的屏幕 */
+}
+
+/* --- 锁屏 --- */
+.lock-screen {
+    background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjkwMCI vdmlld0JveD0iMCAwIDQwMCA5MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJhZGlhbEdyYWRpZW50IGN4PSIyMDAiIGN5PSI0NTAiIHI9IjQ1MCIgZ3JhZGllbnVUbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIHN0b3AtY29sb3I9IiMwMDQ3QUQiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMwMDIxNDAiLz48L3JhZGlhbEdyYWRpZW50Pjwvc3ZnPg==') center/cover no-repeat;
+}
+.time-lock {
+    position: absolute;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    color: #fff;
+    width: 100%; /* 确保居中 */
+}
+.time-lock .time {
+    font-size: 64px;
+    font-weight: 200;
+    letter-spacing: -2px;
+}
+.time-lock .date {
+    font-size: 18px;
+    font-weight: 300;
+    margin-top: 4px;
+    opacity: .8;
+}
+.notifications-container {
+    position: absolute;
+    top: 160px;
+    left: 20px;
+    right: 20px;
+    bottom: 100px;
+    overflow: hidden;
+}
+.notification-card {
+    background: rgba(255, 255, 255, .95);
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    animation: slideIn .4s forwards;
+}
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+.app-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: bold;
+    font-size: 14px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+.wechat {
+    background: #07C160;
+}
+.notification-content {
+    flex: 1;
+}
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 600;
+    color: #000;
+}
+.notification-text {
+    font-size: 14px;
+    color: #333;
+    margin-top: 2px;
+}
+.collapsed {
+    background: rgba(255, 255, 255, .95);
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 8px;
+    font-size: 15px;
+    color: #000;
+    display: flex;
+    align-items: center;
+}
+.swipe-hint {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+}
+.swipe-hint .text {
+    font-size: 14px;
+    color: #fff;
+    opacity: .6;
+    margin-bottom: 4px;
+    animation: fade 2s infinite;
+}
+@keyframes fade {
+    0%, 100% {
+        opacity: .4;
+    }
+    50% {
+        opacity: .8;
+    }
+}
+.swipe-hint .bar {
+    width: 80px;
+    height: 4px;
+    background: #fff;
+    border-radius: 4px;
+    margin: 0 auto;
+}
+
+/* --- 主页 --- */
+.home-screen {
+    background: #e1e1e1; /* 浅灰色背景 */
+    flex-direction: column;
+}
+.home-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: #000;
+    box-sizing: border-box;
+}
+.home-header .time {
+    font-size: 64px;
+    font-weight: 200;
+    letter-spacing: -2px;
+    margin-top: 60px;
+}
+.home-header .date {
+    font-size: 18px;
+    font-weight: 300;
+    margin-top: 4px;
+    opacity: .8;
+    color: #000;
+}
+.blue-card {
+    background: #0A84FF;
+    border-radius: 24px;
+    margin: 20px;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+.dock {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 50px;
+    box-sizing: border-box;
+}
+.icon-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 60px);
+    grid-template-rows: repeat(2, 60px);
+    gap: 24px;
+}
+.icon-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    width: 60px;
+}
+.icon {
+    width: 60px;
+    height: 60px;
+    background: #fff;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-size: 18px;
+    font-weight: bold;
+    flex-shrink: 0;
+    flex-grow: 0;
+    box-sizing: border-box;
+}
+.icon-label {
+    font-size: 12px;
+    color: #000;
+    margin-top: 4px;
+    text-align: center;
+}
+
+/* --- QQ主界面样式 --- */
+.qq-main-screen {
+    background: #F0F2F5;
+    z-index: 999;
+    overflow: hidden;
+    flex-direction: column;
+}
+.qq-main-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: #E5E5EA;
+    border-bottom: 1px solid #D1D1D6;
+    flex-shrink: 0;
+    position: relative;
+}
+.qq-main-top-bar .left-actions,
+.qq-main-top-bar .right-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.qq-main-top-bar .back-arrow,
+.qq-main-top-bar .delete-mode-cancel-button,
+.qq-main-top-bar .delete-mode-action-button {
+    font-size: 17px;
+    font-weight: 600;
+    padding: 10px 15px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: flex-end;
+}
+.qq-main-top-bar .back-arrow {
+    color: #0A84FF;
+    margin-left: -6px;
+}
+.qq-main-top-bar .delete-mode-cancel-button {
+    background: none;
+    border: none;
+    color: #0A84FF;
+    margin-left: -6px;
+}
+.qq-main-top-bar .delete-mode-action-button {
+    background: #FF3B30;
+    color: #fff;
+    border-radius: 8px;
+    padding: 5px 12px;
+}
+.qq-main-top-bar .title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #000;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.qq-main-top-bar .action-button {
+    background: none;
+    border: none;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    box-shadow: none;
+    font-size: 22px;
+    color: #000;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: flex-end;
+}
+.qq-main-top-bar .action-button:hover {
+    color: #0A84FF;
+}
+.qq-content-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.qq-main-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.ai-assistant-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    background: #fff;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.3s ease;
+}
+.ai-assistant-item:hover {
+    background: #f0f0f0;
+}
+.ai-assistant-item.selected-for-deletion {
+    background: #FFD1D1;
+    border: 2px solid #FF6B6B;
+}
+.ai-assistant-item .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #eee;
+    background-size: cover;
+    background-position: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+.ai-assistant-item .name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #000;
+    flex-grow: 1;
+}
+.ai-assistant-item .persona-preview {
+    display: none;
+}
+
+/* --- QQ底栏样式 --- */
+.qq-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 8px 0;
+    background: #FFFFFF;
+    border-top: 1px solid #E5E5E5;
+    flex-shrink: 0;
+    height: 56px;
+}
+.qq-bottom-bar .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    height: 100%;
+}
+.qq-bottom-bar .tab-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #999;
+    transition: color 0.2s ease;
+}
+.qq-bottom-bar .tab-item.active .tab-icon {
+    color: #0A84FF;
+}
+.qq-bottom-bar .tab-item:hover .tab-icon {
+    color: #0A84FF;
+}
+
+/* --- 发现和我的面板样式 --- */
+.qq-discover-panel,
+.qq-me-panel {
+    flex-grow: 1;
+    background: #F0F2F5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-size: 16px;
+    overflow-y: auto;
+}
+
+/* --- 删除确认卡片样式 --- */
+.delete-confirmation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    display: none;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.delete-confirmation-card {
+    background: rgba(255, 255, 255, .95);
+    border-radius: 20px;
+    padding: 24px;
+    width: 300px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+.delete-confirmation-card h4 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #000;
+    margin-bottom: 8px;
+}
+.delete-confirmation-card p {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 20px;
+}
+.delete-confirmation-card .buttons {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+.delete-confirmation-card .btn-cancel,
+.delete-confirmation-card .btn-delete {
+    flex: 1;
+    padding: 12px 15px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+.delete-confirmation-card .btn-cancel {
+    background: #E5E5EA;
+    color: #000;
+}
+.delete-confirmation-card .btn-cancel:hover {
+    background: #D1D1D6;
+}
+.delete-confirmation-card .btn-delete {
+    background: #FF3B30;
+    color: #fff;
+}
+.delete-confirmation-card .btn-delete:hover {
+    background: #FF5733;
+}
+
+/* --- QQ聊天面板全屏样式 --- */
+.qq-chat-screen {
+    background: #F0F2F5;
+    z-index: 999;
+    overflow: hidden;
+}
+.qq-top-bar {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    background: #E5E5EA;
+    border-bottom: 1px solid #D1D1D6;
+    flex-shrink: 0;
+    position: relative;
+}
+.qq-top-bar .back-arrow,
+.qq-top-bar .delete-mode-cancel-button,
+.qq-top-bar .delete-mode-action-button {
+    font-size: 17px;
+    font-weight: 600;
+    padding: 10px 15px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: flex-end;
+}
+.qq-top-bar .back-arrow {
+    color: #0A84FF;
+    margin-left: -6px;
+}
+.qq-top-bar .delete-mode-cancel-button {
+    background: none;
+    border: none;
+    color: #0A84FF;
+    margin-left: -6px;
+}
+.qq-top-bar .delete-mode-action-button {
+    background: #FF3B30;
+    color: #fff;
+    border-radius: 8px;
+    padding: 5px 12px;
+    margin-left: 10px;
+}
+.qq-top-bar .title {
+    flex-grow: 1;
+    font-size: 18px;
+    font-weight: 600;
+    color: #000;
+    text-align: center;
+    margin-left: 0;
+}
+.qq-top-bar .typing-indicator {
+    position: absolute;
+    top: 35px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: #999;
+    display: none;
+}
+.qq-top-bar .actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.qq-top-bar .action-button {
+    background: none;
+    border: none;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    box-shadow: none;
+    font-size: 22px;
+    color: #000;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: flex-end;
+}
+.qq-top-bar .action-button:hover {
+    color: #0A84FF;
+}
+#selectMessagesIcon {
+    transform: translateY(-2px);
+}
+
+/* 聊天记录区域 */
+.chat-history {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scroll-behavior: smooth;
+}
+.message-wrapper {
+    display: flex;
+    flex-direction: column;
+    max-width: 90%;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.message-wrapper.ai {
+    align-self: flex-start;
+}
+.message-wrapper.user {
+    align-self: flex-end;
+}
+.message-bubble {
+    display: flex;
+    align-items: flex-start;
+    gap: 0px;
+    max-width: 100%;
+}
+.message-bubble.user {
+    flex-direction: row-reverse;
+}
+.avatar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+}
+.message-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #fff;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid #eee;
+    margin-top: -2px;
+}
+.message-timestamp {
+    font-size: 10px;
+    color: #999;
+    margin-top: 4px;
+}
+
+/* --- 聊天气泡样式 - 仿iMessage（优化版） --- */
+.message-content {
+    padding: 8px 12px;
+    font-size: 15px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    border-radius: 18px; /* 统一所有圆角为18px */
+    max-width: 100%;
+    position: relative;
+    margin: 0 8px; /* 为尖角留出空间 */
+}
+
+/* AI消息气泡 - 左侧尖角 */
+.message-wrapper.ai .message-content {
+    background: #C0C0C0;
+    color: #000;
+    border-radius: 18px; /* 统一圆角，移除特殊设置 */
+}
+
+.message-wrapper.ai .message-content::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    bottom: 2px; /* 向上移动2px */
+    width: 0;
+    height: 0;
+    border: 8px solid transparent;
+    border-right-color: #C0C0C0;
+    border-bottom-color: #C0C0C0;
+    border-bottom-right-radius: 16px;
+    z-index: 1; /* 确保与气泡层级一致 */
+}
+
+/* 用户消息气泡 - 右侧尖角 */
+.message-wrapper.user .message-content {
+    background: #e1e1e1;
+    color: #000;
+    border-radius: 18px; /* 统一圆角，移除特殊设置 */
+}
+
+.message-wrapper.user .message-content::before {
+    content: '';
+    position: absolute;
+    right: -4px;
+    bottom: 2px; /* 向上移动2px */
+    width: 0;
+    height: 0;
+    border: 8px solid transparent;
+    border-left-color: #e1e1e1;
+    border-bottom-color: #e1e1e1;
+    border-bottom-left-radius: 16px;
+    z-index: 1; /* 确保与气泡层级一致 */
+}
+
+/* HTML消息样式 - 无气泡 */
+.message-content.html {
+    background: none !important;
+    border: none !important;
+    padding: 8px 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    max-width: 280px;
+}
+
+.message-content.html::before {
+    display: none !important;
+}
+
+/* 确保HTML消息在AI和用户消息中都无气泡 */
+.message-wrapper.ai .message-content.html,
+.message-wrapper.user .message-content.html {
+    background: none !important;
+    border: none !important;
+    padding: 8px 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
+.message-wrapper.ai .message-content.html::before,
+.message-wrapper.user .message-content.html::before {
+    display: none !important;
+}
+
+/* 表情包消息样式 - 无气泡（保持原有样式并确保无气泡） */
+.message-content.emoji {
+    padding: 0 !important;
+    background: none !important;
+    border-radius: 0 !important;
+    max-width: 120px;
+    overflow: hidden;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}
+
+.message-content.emoji::before {
+    display: none !important;
+}
+
+.message-content.emoji img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+}
+
+/* 确保表情包消息在AI和用户消息中都无气泡 */
+.message-wrapper.ai .message-content.emoji,
+.message-wrapper.user .message-content.emoji {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
+.message-wrapper.ai .message-content.emoji::before,
+.message-wrapper.user .message-content.emoji::before {
+    display: none !important;
+}
+
+.message-wrapper.selected-for-deletion {
+    background-color: rgba(10, 132, 255, 0.1);
+    border-radius: 12px;
+}
+
+/* --- 输入区样式 --- */
+.chat-input-area {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    background: #fff;
+    border-top: 1px solid #eee;
+    flex-shrink: 0;
+}
+.qq-message-input {
+    flex-grow: 1;
+    min-height: 40px;
+    max-height: 120px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 10px 15px;
+    font-size: 16px;
+    resize: none;
+    background: #f9f9f9;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    overflow-y: auto;
+}
+.qq-message-input:focus {
+    outline: none;
+    border-color: #0A84FF;
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.2);
+}
+.send-button,
+.generate-button {
+    background: #e1e1e1;
+    color: #000;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    font-size: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateY(-1px);
+}
+.send-button:hover,
+.generate-button:hover {
+    background: #d1d1d1;
+}
+.send-button:disabled,
+.generate-button:disabled {
+    background: #ccc;
+    color: #888;
+    cursor: not-allowed;
+}
+
+/* --- AI助手创建界面 --- */
+.ai-creation-screen {
+    background: #F0F2F5;
+    z-index: 998;
+    overflow-y: auto;
+    padding-bottom: 20px;
+}
+.ai-creation-top-bar {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    background: #E5E5EA;
+    border-bottom: 1px solid #D1D1D6;
+    flex-shrink: 0;
+    position: relative;
+}
+.ai-creation-top-bar .back-arrow {
+    font-size: 17px;
+    font-weight: 600;
+    padding: 10px 15px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: flex-end;
+    color: #0A84FF;
+    margin-left: -6px;
+}
+.ai-creation-top-bar .title {
+    flex-grow: 1;
+    font-size: 18px;
+    font-weight: 600;
+    color: #000;
+    text-align: center;
+    margin-left: 0;
+}
+.ai-creation-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 14px;
+}
+.avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    width: 100%;
+}
+.avatar-placeholder {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background-color: #fff;
+    border: 2px dashed #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #888;
+    cursor: pointer;
+    background-size: cover;
+    background-position: center;
+    margin-bottom: 10px;
+}
+.avatar-placeholder:hover {
+    border-color: #0A84FF;
+}
+.avatar-placeholder span {
+    text-align: center;
+}
+.url-input-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+.url-input-container label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+.url-input-container input[type="text"] {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 10px 15px;
+    font-size: 14px;
+    background: #fff;
+    color: #000;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.url-input-container input[type="text"]:focus {
+    outline: none;
+    border-color: #0A84FF;
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.2);
+}
+.input-section {
+    width: 100%;
+    max-width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.input-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.input-item label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+.input-item input[type="text"],
+.input-item textarea {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 10px 15px;
+    font-size: 14px;
+    background: #fff;
+    color: #000;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input-item textarea {
+    min-height: 70px;
+    resize: vertical;
+    max-height: 180px;
+}
+.input-item input[type="text"]:focus,
+.input-item textarea:focus {
+    outline: none;
+    border-color: #0A84FF;
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.2);
+}
+.world-book-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 15px;
+}
+.world-book-section label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+.world-book-selector {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 10px 15px;
+    font-size: 14px;
+    background: #fff;
+    color: #000;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23000%22%20d%3D%22M287%20197.3l-11.4-11.4c-3.2-3.2-8.4-3.2-11.6%200L146.2%20268.9%2028.4%20185.9c-3.2-3.2-8.4-3.2-11.6%200L5%20197.3c-3.2%203.2-3.2%208.4%200%2011.6l135.2%20135.2c3.2%203.2%208.4%203.2%2011.6%200l135.2-135.2c3.2-3.2%203.2-8.4%200-11.6z%22%2F%3E%3C%2Fsvg%3E');
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+}
+.world-book-selector:focus {
+    outline: none;
+    border-color: #0A84FF;
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.2);
+}
+.button-section {
+    margin-top: 20px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+.btn-save-preset,
+.btn-cancel {
+    width: 100%;
+    max-width: 320px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    text-align: center;
+}
+.btn-save-preset {
+    background: #0A84FF;
+    color: #fff;
+}
+.btn-save-preset:hover {
+    background: #007AFF;
+}
+.btn-cancel {
+    background: #E5E5EA;
+    color: #000;
+}
+.btn-cancel:hover {
+    background: #D1D1D6;
+}
+
+/* --- API 设置面板样式 --- */
+.api-settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    display: none;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.api-settings-card {
+    background: rgba(255, 255, 255, .95);
+    border-radius: 20px;
+    padding: 24px;
+    width: 320px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.settings-header h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #000;
+}
+.close-button {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: #888;
+    cursor: pointer;
+    padding: 0 8px;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+.close-button:hover {
+    color: #000;
+}
+.settings-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.settings-item label {
+    font-size: 14px;
+    color: #555;
+    font-weight: 500;
+}
+.settings-item input,
+.settings-item select {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 16px;
+    color: #333;
+    background: #f9f9f9;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.settings-item input:focus,
+.settings-item select:focus {
+    outline: none;
+    border-color: #0A84FF;
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.2);
+}
+.settings-item select {
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23000%22%20d%3D%22M287%20197.3l-11.4-11.4c-3.2-3.2-8.4-3.2-11.6%200L146.2%20268.9%2028.4%20185.9c-3.2-3.2-8.4-3.2-11.6%200L5%20197.3c-3.2%203.2-3.2%208.4%200%2011.6l135.2%20135.2c3.2%203.2%208.4%203.2%2011.6%200l135.2-135.2c3.2-3.2%203.2-8.4%200-11.6z%22%2F%3E%3C%2Fsvg%3E');
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+}
+.fetch-models-button,
+.save-button {
+    background: #E5E5EA;
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.2s ease;
+    text-align: center;
+}
+.fetch-models-button:hover {
+    background: #D1D1D6;
+}
+.save-button {
+    background: #0A84FF;
+    color: #fff;
+    margin-top: 10px;
+}
+.save-button:hover {
+    background: #007AFF;
+}
+
+/* --- 通用设置面板样式 --- */
+.settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    display: none;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.settings-card {
+    background: rgba(255, 255, 255, .95);
+    border-radius: 20px;
+    padding: 24px;
+    width: 320px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+}
+#generalSettingsOverlay .close-button {
+    display: none;
+}
+.settings-card .close-button {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: #888;
+    cursor: pointer;
+    padding: 0 8px;
+    line-height: 1;
+    transition: color 0.2s ease;
+    z-index: 10;
+}
+.settings-card .close-button:hover {
+    color: #000;
+}
+.settings-card .section-header {
+    font-size: 18px;
+    font-weight: 600;
+    color: #000;
+    cursor: pointer;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.settings-card .section-header .arrow {
+    font-size: 14px;
+    transition: transform 0.3s ease;
+}
+.settings-card .section-header.expanded .arrow {
+    transform: rotate(90deg);
+}
+.settings-content {
+    display: none;
+    flex-direction: column;
+    gap: 15px;
+    padding-top: 10px;
+}
+.settings-content.expanded {
+    display: flex;
+}
+.settings-content .input-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.settings-content .input-item label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+.settings-content .input-item input[type="text"],
+.settings-content .input-item textarea {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 10px 15px;
+    font-size: 14px;
+    background: #fff;
+    color: #000;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.settings-content .input-item textarea {
+    min-height: 70px;
+    resize: vertical;
+    max-height: 180px;
+}
+.settings-content .input-item input[type="text"]:focus,
+.settings-content .input-item textarea:focus {
+    outline: none;
+    border-color: #0A84FF;
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.2);
+}
+.context-memory-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+.context-memory-section .section-header {
+    font-size: 18px;
+    font-weight: 600;
+    color: #000;
+    cursor: pointer;
+    padding: 8px 0;
+    border-bottom: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.context-memory-section .section-header .arrow {
+    font-size: 14px;
+    transition: transform 0.3s ease;
+}
+.context-memory-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.context-memory-content label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+.context-memory-content input[type="number"] {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 10px 15px;
+    font-size: 14px;
+    background: #fff;
+    color: #000;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.context-memory-content input[type="number"]:focus {
+    outline: none;
+    border-color: #0A84FF;
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.2);
+}
+.settings-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    justify-content: center;
+}
+.settings-actions .btn-cancel,
+.settings-actions .btn-save {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+.settings-actions .btn-cancel {
+    background: #E5E5EA;
+    color: #000;
+}
+.settings-actions .btn-cancel:hover {
+    background: #D1D1D6;
+}
+.settings-actions .btn-save {
+    background: #0A84FF;
+    color: #fff;
+}
+.settings-actions .btn-save:hover {
+    background: #007AFF;
+}
+.settings-content .toggle-switch-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+input:checked + .toggle-slider {
+    background-color: #0A84FF;
+}
+input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+
+/* --- 隐藏的文件输入框 --- */
+.file-input-hidden {
+    display: none;
+}
+
+/* --- 悬浮球和面板样式 --- */
+.floating-ball-container {
+    position: fixed;
+    z-index: 1001;
+    cursor: grab;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    display: none;
+    right: 10px;
+    bottom: 150px;
+    left: auto;
+    top: auto;
+}
+.floating-ball {
+    width: 36px;
+    height: 36px;
+    background-color: rgba(180, 180, 180, 0.6);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 22px;
+    color: #333;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.2s ease;
+    position: relative;
+}
+.floating-ball:hover {
+    background-color: rgba(150, 150, 150, 0.7);
+}
+.floating-panel {
+    position: fixed;
+    width: 180px;
+    background-color: rgba(220, 220, 220, 0.95);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+.floating-panel.visible {
+    display: flex;
+}
+.floating-panel .panel-item {
+    font-size: 15px;
+    color: #000;
+    cursor: pointer;
+    padding: 8px 10px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+.floating-panel .panel-item:hover {
+    background-color: #f0f0f0;
+}
+.floating-ball-container.dragging {
+    cursor: grabbing;
+    opacity: 0.8;
+}
+
+/* --- SVG图标样式 --- */
+.qq-bottom-bar .tab-icon svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+    stroke: none;
+}
+#selectMessagesIcon svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+#selectMessagesIcon svg circle:first-child {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+}
+#selectMessagesIcon svg circle:last-child {
+    fill: currentColor;
+}
+.qq-top-bar .action-button#selectMessagesIcon,
+.qq-top-bar .action-button#chatSettingsIcon {
+    align-items: center;
+    justify-content: center;
+}
+.qq-main-top-bar .action-button#addAIButton {
+    font-size: 28px;
+    transform: translateY(-2px);
+}
+
+/* --- 表情包面板样式 --- */
+.emoji-main-panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background-color: rgba(220, 220, 220, 0.95);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+    z-index: 1002;
+    display: none;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.3s ease-out;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+.emoji-main-panel.visible {
+    display: flex;
+    transform: translateY(0);
+}
+.emoji-main-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+}
+
+/* 表情包面板头部按钮样式 */
+.emoji-main-panel-header .action-button {
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 6px 12px;
+    line-height: 1;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* 取消按钮样式（保持原有的深灰色背景） */
+.emoji-main-panel-header .action-button:first-child {
+    background: #666;
+    color: #fff;
+}
+
+.emoji-main-panel-header .action-button:first-child:hover {
+    background: #555;
+}
+
+/* + 和 × 按钮样式（都加上灰色背景） */
+.emoji-main-panel-header .action-button:not(:first-child) {
+    background: #E5E5EA; /* 浅灰色背景 */
+    color: #000; /* 黑色文字 */
+}
+
+.emoji-main-panel-header .action-button:not(:first-child):hover {
+    background: #D1D1D6; /* 悬停时稍微变深 */
+}
+
+/* 删除模式下的确定和取消按钮 */
+.emoji-main-panel-header .delete-mode-button {
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 6px 12px;
+    line-height: 1;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-left: 8px;
+}
+
+.emoji-main-panel-header .delete-confirm-button {
+    background: #FF3B30;
+    color: #fff;
+}
+
+.emoji-main-panel-header .delete-confirm-button:hover {
+    background: #FF5733;
+}
+
+.emoji-main-panel-header .delete-cancel-button {
+    background: #E5E5EA;
+    color: #000;
+}
+
+.emoji-main-panel-header .delete-cancel-button:hover {
+    background: #D1D1D6;
+}
+
+/* 表情包选中状态样式 - 修复红点显示问题 */
+.emoji-item.selected-for-deletion {
+    position: relative;
+    background-color: rgba(255, 59, 48, 0.1) !important; /* 加上 !important 确保生效 */
+    border: 2px solid #FF3B30 !important; /* 加上 !important 确保生效 */
+}
+
+/* 表情包右上角红点提示 - 确保显示在最上层 */
+.emoji-item.selected-for-deletion::after {
+    content: '';
+    position: absolute;
+    top: 6px; /* 调整位置 */
+    right: 6px; /* 调整位置 */
+    width: 14px; /* 稍微增大 */
+    height: 14px; /* 稍微增大 */
+    background-color: #FF3B30;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    z-index: 20; /* 提高层级 */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); /* 添加阴影增强可见性 */
+}
+
+.emoji-grid-container {
+    flex-grow: 1;
+    padding: 6px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+.emoji-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    background-color: transparent;
+    border-radius: 12px;
+    padding: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    min-height: 120px;
+}
+.emoji-item:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+.emoji-item img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    background-color: #f0f0f0;
+    border-radius: 8px;
+    flex-shrink: 0;
+    margin-bottom: 6px;
+}
+.emoji-item .emoji-label {
+    font-size: 12px;
+    color: #333;
+    margin-top: 0;
+    text-align: center;
+    word-break: break-all;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    padding: 2px 4px;
+    cursor: text;
+    flex-grow: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    line-height: 1.2;
+    max-height: 36px;
+}
+
+/* --- 添加表情包选项面板样式 --- */
+.add-emoji-options-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    background-color: rgba(220, 220, 220, 0.95);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+    z-index: 1003;
+    display: none;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.3s ease-out;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+.add-emoji-options-overlay.visible {
+    display: flex;
+    transform: translateY(0);
+}
+.add-emoji-options-overlay .option-item {
+    padding: 15px 20px;
+    font-size: 16px;
+    color: #0A84FF;
+    text-align: center;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+.add-emoji-options-overlay .option-item:last-child {
+    border-bottom: none;
+}
+.add-emoji-options-overlay .option-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+.add-emoji-options-overlay .cancel-button {
+    padding: 12px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #FF3B30;
+    text-align: center;
+    cursor: pointer;
+    margin-top: 10px;
+    background-color: #fff;
+    border-radius: 12px;
+    margin: 10px;
+}
+.add-emoji-options-overlay .cancel-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* --- 表情包备注面板样式 --- */
+.emoji-caption-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 1004;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.emoji-caption-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+.emoji-caption-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 20px;
+    width: 300px;
+    max-height: 80%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+.emoji-caption-card .image-preview {
+    display: none; /* 隐藏图片预览 */
+}
+.emoji-caption-card .image-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+.emoji-caption-card textarea {
+    width: 100%;
+    min-height: 60px;
+    max-height: 120px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 10px 15px;
+    font-size: 14px;
+    background: #f9f9f9;
+    resize: vertical;
+    box-sizing: border-box;
+}
+.emoji-caption-card .buttons {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+.emoji-caption-card .btn-cancel,
+.emoji-caption-card .btn-send {
+    flex: 1;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+.emoji-caption-card .btn-cancel {
+    background: #E5E5EA;
+    color: #000;
+}
+.emoji-caption-card .btn-cancel:hover {
+    background: #D1D1D6;
+}
+.emoji-caption-card .btn-send {
+    background: #0A84FF;
+    color: #fff;
+}
+.emoji-caption-card .btn-send:hover {
+    background: #007AFF;
+}
+
+/* --- 语音录制面板样式 --- */
+.voice-record-panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 260px;
+    background-color: rgba(60, 60, 60, 0.95);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 1002;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transform: translateY(100%);
+    transition: transform 0.3s ease-out;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.voice-record-panel.visible {
+    display: flex;
+    transform: translateY(0);
+}
+
+.voice-record-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 30px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.voice-record-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.voice-record-button {
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.voice-record-button:active {
+    transform: scale(1.1);
+    background: rgba(255, 59, 48, 0.3);
+}
+
+.microphone-icon {
+    width: 40px;
+    height: 60px;
+    position: relative;
+}
+
+.voice-hint-text {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+    margin-top: 20px;
+}
+
+.voice-hint-text.recording {
+    color: #FF3B30;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 50%, 100% {
+        opacity: 1;
+    }
+    25%, 75% {
+        opacity: 0.5;
+    }
+}
+
+.recording-timer {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #FF3B30;
+    font-size: 16px;
+    font-weight: 600;
+    display: none;
+}
+
+.recording-timer.visible {
+    display: block;
+}
+
+/* 语音消息气泡样式 */
+.message-content.voice {
+    min-width: 150px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+}
+
+.voice-duration {
+    font-size: 14px;
+    color: inherit;
+    font-weight: 500;
+}
+
+.voice-wave {
+    font-size: 14px;
+    letter-spacing: 1px;
+    opacity: 0.8;
+}
+
+.message-content.voice:hover {
+    opacity: 0.9;
+}
+
+.message-content.voice.playing .voice-wave {
+    animation: voiceWave 1s infinite;
+}
+
+@keyframes voiceWave {
+    0%, 100% {
+        opacity: 0.8;
+    }
+    50% {
+        opacity: 0.4;
+    }
+}
+
+/* --- MODIFIED CSS START --- */
+/* 语音识别文本显示区域 */
+.voice-recognition-area {
+    position: absolute;
+    top: 60px;
+    left: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    display: none;
+    flex-direction: column;
+    gap: 15px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.voice-recognition-area.visible {
+    display: flex;
+}
+
+.voice-text-display {
+    min-height: 60px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 16px;
+    color: #333;
+    background: #f9f9f9;
+    cursor: text;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+}
+
+.voice-text-display:focus {
+    border-color: #0A84FF;
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.2);
+}
+
+.voice-action-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.voice-cancel-btn,
+.voice-confirm-btn {
+    flex: 1;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.voice-cancel-btn {
+    background: #E5E5EA;
+    color: #000;
+}
+
+.voice-cancel-btn:hover {
+    background: #D1D1D6;
+}
+
+.voice-confirm-btn {
+    background: #0A84FF;
+    color: #fff;
+}
+
+.voice-confirm-btn:hover {
+    background: #007AFF;
+}
+
+/* 语音转文字显示框 */
+.voice-text-popup {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    max-width: 200px;
+    word-wrap: break-word;
+    display: none;
+    z-index: 10;
+    margin-bottom: 5px;
+}
+
+.voice-text-popup::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.8);
+}
+
+.voice-text-popup.visible {
+    display: block;
+}
+
+/* 修改录制按钮状态 */
+.voice-record-button.recording {
+    animation: none;
+    background: rgba(255, 59, 48, 0.6);
+    transform: scale(1.05);
+}
+
+.voice-record-button.processing {
+    background: rgba(255, 193, 7, 0.6);
+    animation: processingPulse 1s infinite;
+}
+
+@keyframes processingPulse {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 0.9;
+    }
+}
+/* --- MODIFIED CSS END --- */
+</style>
+</head>
+<body>
+<div class="phone-frame">
+  <div class="fluid-cloud"></div>
+  <div class="lock-screen screen active" id="lockScreen">
+    <div class="time-lock">
+      <div class="time" id="timeLock">00:00</div>
+      <div class="date" id="dateLock">星期一 1月1日</div>
+    </div>
+    <div class="notifications-container" id="notifications"></div>
+    <div class="swipe-hint">
+      <div class="text">上滑解锁</div>
+      <div class="bar"></div>
+    </div>
+  </div>
+  <div class="home-screen screen" id="homeScreen">
+    <div class="home-header">
+      <div class="time" id="timeHome">00:00</div>
+      <div class="date" id="dateHome">星期一 1月1日</div>
+    </div>
+    <div class="blue-card">蓝色卡片</div>
+    <div class="dock">
+      <div class="icon-grid">
+        <div class="icon-wrapper"><div class="icon">书</div><div class="icon-label">世界书</div></div>
+        <div class="icon-wrapper"><div class="icon">人</div><div class="icon-label">人设</div></div>
+        <div class="icon-wrapper" id="apiIconWrapper"><div class="icon">API</div><div class="icon-label">api设置</div></div>
+        <div class="icon-wrapper" id="qqIconWrapper"><div class="icon">Q</div><div class="icon-label">QQ</div></div>
+        <div class="icon-wrapper"><div class="icon">音</div><div class="icon-label">音乐</div></div>
+        <div class="icon-wrapper" id="settingsIconWrapper"><div class="icon">⚙️</div><div class="icon-label">设置</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="qq-main-screen screen" id="qqMainScreen">
+    <div class="qq-main-top-bar">
+        <div class="left-actions">
+            <span class="back-arrow" id="backToHomeFromMain">←</span>
+            <span class="delete-mode-cancel-button" id="deleteModeCancelButton" style="display: none;">取消</span>
+        </div>
+        <h3 class="title" id="qqMainTitle">QQ</h3>
+        <div class="right-actions">
+            <button class="action-button" id="addAIButton">⊕</button>
+            <span class="delete-mode-action-button" id="deleteModeActionButton" style="display: none;">删除</span>
+        </div>
+    </div>
+    <div class="qq-content-container">
+        <div class="qq-main-content" id="qqMainContent">
+            <p style="text-align: center; color: #888; margin-top: 20px;">暂无AI助手，点击右上角“⊕”添加。</p>
+        </div>
+        <div class="qq-discover-panel" id="qqDiscoverPanel" style="display: none;"><span>发现功能开发中...</span></div>
+        <div class="qq-me-panel" id="qqMePanel" style="display: none;"><span>个人中心开发中...</span></div>
+    </div>
+    <div class="qq-bottom-bar">
+        <div class="tab-item active" id="tabChat" data-panel="chat"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></div></div>
+        <div class="tab-item" id="tabDiscover" data-panel="discover"><div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div></div>
+        <div class="tab-item" id="tabMe" data-panel="me"><div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M20 21c0-4.4-3.6-8-8-8s-8 3.6-8 8"/></svg></div></div>
+    </div>
+  </div>
+  <div class="qq-chat-screen screen" id="qqChatScreen">
+    <div class="qq-top-bar">
+      <span class="back-arrow" id="backToQQMain">←</span>
+      <h3 class="title" id="chatWindowTitle">AI助手名称</h3>
+      <div class="typing-indicator" id="typingIndicator">对方打字有点慢……</div>
+      <div class="actions">
+        <button class="action-button" id="selectMessagesIcon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="4 2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></button>
+        <button class="action-button" id="chatSettingsIcon">☳</button>
+      </div>
+      <span class="delete-mode-cancel-button" id="chatDeleteModeCancelButton" style="display: none;">取消</span>
+      <span class="delete-mode-action-button" id="chatDeleteModeActionButton" style="display: none;">确定</span>
+    </div>
+    <div class="chat-history" id="chatHistory"></div>
+    <div class="chat-input-area">
+      <textarea id="qqMessageInput" class="qq-message-input" placeholder="输入消息..."></textarea>
+      <button class="send-button" id="qqSendButton" title="一键重roll">➥</button>
+      <button class="generate-button" id="qqGenerateButton">▲</button>
+    </div>
+  </div>
+  <div class="ai-creation-screen screen" id="aiCreationScreen">
+    <div class="ai-creation-top-bar">
+      <span class="back-arrow" id="backToQQMainFromCreation">←</span>
+      <h3 class="title">添加AI助手</h3>
+    </div>
+    <div class="ai-creation-content">
+      <div class="avatar-section">
+        <div class="url-input-container"><label for="aiAvatarUrlInput">AI头像URL</label><input type="text" id="aiAvatarUrlInput" placeholder="输入头像图片的URL链接"></div>
+        <div class="avatar-placeholder" id="aiAvatarPlaceholder"><span>头像预览</span></div>
+      </div>
+      <div class="input-section">
+        <div class="input-item"><label for="aiNameInput">char姓名</label><input type="text" id="aiNameInput" placeholder="为AI助手取个名字"></div>
+        <div class="input-item"><label for="aiPersonaCreate">人设</label><textarea id="aiPersonaCreate" placeholder="描述AI助手的性格、背景和行为方式"></textarea></div>
+        <div class="input-item"><label for="aiWorldBookInput">世界书</label><div class="world-book-selector" id="aiWorldBookInput"><span>选择世界书条目</span></div></div>
+      </div>
+      <div class="button-section">
+        <button class="btn-save-preset" id="savePresetButton">保存预设</button>
+        <button class="btn-cancel" id="cancelPresetButton">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="api-settings-overlay" id="apiSettingsOverlay">
+  <div class="api-settings-card">
+    <div class="settings-header"><h3>API 设置</h3><button class="close-button" id="closeApiSettings">×</button></div>
+    <div class="settings-item"><label for="baseUrlInput">Base URL</label><input type="text" id="baseUrlInput" placeholder="https://api.openai.com"></div>
+    <div class="settings-item"><label for="apiKeyInput">API Key</label><input type="password" id="apiKeyInput" placeholder="sk-xxxxxxxxxxxxxxxxxxxx"></div>
+    <button class="fetch-models-button" id="fetchModelsButton">拉取模型</button>
+    <div class="settings-item"><label for="modelSelect">Model Name</label><select id="modelSelect"><option value="" disabled selected>请选择模型</option></select></div>
+    <button class="save-button" id="saveApiSettings">保存</button>
+  </div>
+</div>
+<div class="settings-overlay" id="generalSettingsOverlay">
+  <div class="settings-card">
+    <button class="close-button" id="closeGeneralSettingsButton">×</button>
+    <div class="settings-section" id="userSettingsSection">
+      <div class="section-header"><span>用户预设</span><span class="arrow">▶</span></div>
+      <div class="settings-content">
+        <div class="avatar-section">
+          <div class="url-input-container"><label for="userAvatarUrlSetting">用户头像URL</label><input type="text" id="userAvatarUrlSetting" placeholder="输入你的头像URL链接"></div>
+          <div class="avatar-placeholder" id="userAvatarPlaceholderSetting"><span>头像预览</span></div>
+        </div>
+        <div class="input-item"><label for="userNameSetting">用户姓名</label><input type="text" id="userNameSetting" placeholder="输入你的名字"></div>
+        <div class="input-item"><label for="userPersonaSetting">用户人设</label><textarea id="userPersonaSetting" placeholder="描述你的性格、背景和行为方式"></textarea></div>
+      </div>
+    </div>
+    <div class="settings-section" id="aiSettingsSection">
+      <div class="section-header"><span>AI预设</span><span class="arrow">▶</span></div>
+      <div class="settings-content">
+        <div class="avatar-section">
+          <div class="url-input-container"><label for="aiAvatarUrlSetting">AI头像URL</label><input type="text" id="aiAvatarUrlSetting" placeholder="输入AI头像URL"></div>
+          <div class="avatar-placeholder" id="aiAvatarPlaceholderSetting"><span>头像预览</span></div>
+        </div>
+        <div class="input-item"><label for="aiNameSetting">AI姓名</label><input type="text" id="aiNameSetting" placeholder="AI助手的名字"></div>
+        <div class="input-item"><label for="aiPersonaSetting">AI人设</label><textarea id="aiPersonaSetting" placeholder="描述AI助手的性格、背景和行为方式"></textarea></div>
+        <div class="input-item"><label for="aiWorldBookSetting">AI世界书</label><div class="world-book-selector" id="aiWorldBookSetting"><span>选择世界书条目</span></div></div>
+        <div class="input-item"><div class="toggle-switch-container"><label for="timeAwarenessToggle">现实时间感知</label><label class="toggle-switch"><input type="checkbox" id="timeAwarenessToggle"><span class="toggle-slider"></span></label></div></div>
+      </div>
+    </div>
+    <div class="context-memory-section" id="contextMemorySection">
+      <div class="section-header"><span>上下文记忆轮数</span></div>
+      <div class="context-memory-content">
+        <div class="context-memory"><label for="contextMemoryRoundsSetting">记忆轮数</label><input type="number" id="contextMemoryRoundsSetting" min="0" max="999" placeholder="0-999"><p style="font-size: 12px; color: #666;">(用户发送消息+AI回复消息算一轮)</p></div>
+      </div>
+    </div>
+    <div class="settings-actions" style="margin-top: 20px;"><button class="btn-cancel" id="cancelAllSettings">取消</button><button class="btn-save" id="saveAllSettingsButton">保存所有设置</button></div>
+  </div>
+</div>
+<div class="delete-confirmation-overlay" id="deleteConfirmationOverlay">
+  <div class="delete-confirmation-card">
+    <h4>确认删除</h4><p id="confirmationMessage">是否要彻底删除选中的AI预设？<br>此操作无法恢复。</p>
+    <div class="buttons"><button class="btn-cancel" id="cancelDeleteButton">取消</button><button class="btn-delete" id="confirmDeleteButton">确认</button></div>
+  </div>
+</div>
+<div class="floating-ball-container" id="floatingBallContainer"><div class="floating-ball">+</div></div>
+<div class="floating-panel" id="floatingPanel"></div>
+<div class="emoji-main-panel" id="emojiMainPanel">
+    <div class="emoji-main-panel-header">
+        <button class="action-button" id="closeEmojiMainPanelButton">取消</button>
+        <span class="title">表情包</span>
+        <div class="header-actions">
+            <!-- 正常模式下的按钮 -->
+            <button class="action-button" id="deleteEmojiModeButton" style="display: inline-block;">×</button>
+            <button class="action-button" id="addEmojiButton" style="display: inline-block;">+</button>
+            <!-- 删除模式下的按钮 -->
+            <button class="delete-mode-button delete-cancel-button" id="cancelEmojiDeleteButton" style="display: none;">取消</button>
+            <button class="delete-mode-button delete-confirm-button" id="confirmEmojiDeleteButton" style="display: none;">确定</button>
+        </div>
+    </div>
+    <div class="emoji-grid-container" id="emojiGridContainer"></div>
+</div>
+<div class="add-emoji-options-overlay" id="addEmojiOptionsOverlay">
+    <div class="option-item" id="localUploadOption">本地上传</div>
+    <div class="option-item" id="urlImportOption">URL导入</div>
+    <div class="cancel-button" id="cancelAddEmojiOptionsButton">取消</div>
+</div>
+<div class="emoji-caption-overlay" id="emojiCaptionOverlay">
+    <div class="emoji-caption-card" id="emojiCaptionCard">
+        <div class="image-preview" id="emojiImagePreview"><img src="" alt="表情包预览"></div>
+        <textarea id="emojiCaptionInput" placeholder="修改表情包备注..."></textarea>
+        <div class="buttons"><button class="btn-cancel" id="cancelEmojiCaptionButton">取消</button><button class="btn-send" id="saveEmojiCaptionButton">保存</button></div>
+    </div>
+</div>
+<div class="voice-record-panel" id="voiceRecordPanel">
+    <div class="voice-record-close" id="closeVoicePanel">×</div>
+    <div class="recording-timer" id="recordingTimer">0s</div>
+    <div class="voice-record-button" id="voiceRecordButton">
+        <svg class="microphone-icon" viewBox="0 0 40 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="12" y="5" width="16" height="25" rx="8" fill="white"/>
+            <path d="M20 35 L20 45" stroke="white" stroke-width="3" stroke-linecap="round"/>
+            <path d="M12 45 L28 45" stroke="white" stroke-width="3" stroke-linecap="round"/>
+            <path d="M8 20 Q8 30 20 30 Q32 30 32 20" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+    </div>
+    <div class="voice-hint-text" id="voiceHintText">点击开始录制</div>
+    <!-- --- MODIFIED HTML START --- -->
+    <div class="voice-recognition-area" id="voiceRecognitionArea">
+        <textarea class="voice-text-display" id="voiceTextDisplay" placeholder="识别到的语音内容将显示在这里..."></textarea>
+        <div class="voice-action-buttons">
+            <button class="voice-cancel-btn" id="voiceCancelBtn">取消</button>
+            <button class="voice-confirm-btn" id="voiceConfirmBtn">确认</button>
+        </div>
+    </div>
+    <!-- --- MODIFIED HTML END --- -->
+</div>
+<input type="file" id="localEmojiFileInput" accept="image/*" multiple style="display: none;">
+
+<script>
+// --- 全局时间更新 ---
+function updateTime() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, '0');
+    const m = now.getMinutes().toString().padStart(2, '0');
+    const d = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()];
+    const month = now.getMonth() + 1;
+    const date = now.getDate();
+    document.getElementById('timeLock').textContent = h + ':' + m;
+    document.getElementById('dateLock').textContent = d + ' ' + month + '月' + date + '日';
+    document.getElementById('timeHome').textContent = h + ':' + m;
+    document.getElementById('dateHome').textContent = d + ' ' + month + '月' + date + '日';
+}
+updateTime();
+setInterval(updateTime, 1000);
+
+// --- 屏幕切换函数 ---
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    document.getElementById(screenId).classList.add('active');
+    const floatingBallContainer = document.getElementById('floatingBallContainer');
+    if (floatingBallContainer) {
+        if (screenId === 'qqChatScreen') {
+            floatingBallContainer.style.display = 'flex';
+        } else {
+            floatingBallContainer.style.display = 'none';
+            const floatingPanel = document.getElementById('floatingPanel');
+            if (floatingPanel) {
+                floatingPanel.classList.remove('visible');
+            }
+            closeEmojiMainPanel();
+        }
+    }
+}
+
+// --- 锁屏上滑解锁 ---
+let startY = 0;
+const lockScreen = document.getElementById('lockScreen');
+lockScreen.addEventListener('touchstart', e => { startY = e.touches[0].clientY; });
+lockScreen.addEventListener('touchend', e => {
+    const endY = e.changedTouches[0].clientY;
+    if (endY - startY < -80) { showScreen('homeScreen'); }
+});
+
+// --- 锁屏通知逻辑 ---
+const msgs = ["在吗？", "有急事找你！", "快看这条消息！", "你怎么还没回我？", "真的很重要！", "看到请回复！", "我发了很多条了", "你到底在不在？", "快点看微信！", "别装死了", "真的超级重要的事！", "求你了快看消息", "我数到三！", "1...", "2...", "3！还不回我", "算了，你不是我朋友", "但是真的要说", "今天天气真好"];
+let notiCount = 0;
+let expanded = false;
+const notificationsContainer = document.getElementById('notifications');
+function addCard(text, time) {
+    if (expanded || notiCount >= 5) { if (!expanded) collapseNotifications(); return; }
+    const card = document.createElement('div');
+    card.className = 'notification-card';
+    card.innerHTML = `<div class="app-icon wechat">微信</div><div class="notification-content"><div class="notification-header">微信 <span>${time}</span></div><div class="notification-text">${text}</div></div>`;
+    notificationsContainer.appendChild(card);
+    notiCount++;
+}
+function collapseNotifications() {
+    expanded = true;
+    notificationsContainer.innerHTML = '';
+    const collapsed = document.createElement('div');
+    collapsed.className = 'collapsed';
+    collapsed.innerHTML = '<div class="app-icon wechat">微信</div><div>微信 ' + notiCount + ' 条新消息</div>';
+    collapsed.style.cursor = 'pointer';
+    collapsed.onclick = showAllNotifications;
+    notificationsContainer.appendChild(collapsed);
+}
+function showAllNotifications() {
+    notificationsContainer.innerHTML = '';
+    msgs.forEach(text => {
+        const card = document.createElement('div');
+        card.className = 'notification-card';
+        card.innerHTML = `<div class="app-icon wechat">微信</div><div class="notification-content"><div class="notification-header">微信 <span>刚刚</span></div><div class="notification-text">${text}</div></div>`;
+        notificationsContainer.appendChild(card);
+    });
+}
+msgs.forEach((m, i) => setTimeout(() => addCard(m, '刚刚'), i * 1000));
+
+// --- API 设置面板的逻辑 ---
+const apiIconWrapper = document.getElementById('apiIconWrapper');
+const apiSettingsOverlay = document.getElementById('apiSettingsOverlay');
+const closeApiSettingsButton = document.getElementById('closeApiSettings');
+const saveApiSettingsButton = document.getElementById('saveApiSettings');
+const baseUrlInput = document.getElementById('baseUrlInput');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const modelSelect = document.getElementById('modelSelect');
+const fetchModelsButton = document.getElementById('fetchModelsButton');
+function loadApiSettings() {
+    baseUrlInput.value = localStorage.getItem('api_base_url') || '';
+    apiKeyInput.value = localStorage.getItem('api_key') || '';
+    const savedModel = localStorage.getItem('api_model_name');
+    modelSelect.innerHTML = '<option value="" disabled selected>请选择模型</option>';
+    if (savedModel) {
+        const option = document.createElement('option');
+        option.value = savedModel;
+        option.textContent = savedModel;
+        modelSelect.appendChild(option);
+        modelSelect.value = savedModel;
+    }
+}
+function saveApiSettings() {
+    localStorage.setItem('api_base_url', baseUrlInput.value);
+    localStorage.setItem('api_key', apiKeyInput.value);
+    localStorage.setItem('api_model_name', modelSelect.value);
+    alert('API 设置已保存成功！');
+    apiSettingsOverlay.style.display = 'none';
+}
+async function fetchModels() {
+    const baseUrl = baseUrlInput.value.trim();
+    const apiKey = apiKeyInput.value.trim();
+    if (!baseUrl || !apiKey) { alert('请先填写 Base URL 和 API Key 才能拉取模型哦！'); return; }
+    fetchModelsButton.textContent = '正在拉取...';
+    fetchModelsButton.disabled = true;
+    modelSelect.disabled = true;
+    try {
+        const response = await fetch(`${baseUrl}/v1/models`, { method: 'GET', headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' } });
+        if (!response.ok) { const errorData = await response.json(); throw new Error(`API Error: ${response.status} - ${errorData.error ? errorData.error.message : response.statusText}`); }
+        const data = await response.json();
+        const models = data.data.map(m => m.id).sort();
+        modelSelect.innerHTML = '<option value="" disabled selected>请选择模型</option>';
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model;
+            option.textContent = model;
+            modelSelect.appendChild(option);
+        });
+        const savedModel = localStorage.getItem('api_model_name');
+        modelSelect.value = (savedModel && models.includes(savedModel)) ? savedModel : "";
+        alert(`模型拉取成功！共找到 ${models.length} 个模型。`);
+    } catch (error) {
+        console.error('拉取模型失败：', error);
+        alert('拉取模型失败，请检查 Base URL 和 API Key 是否正确，或网络连接。错误信息：' + error.message);
+    } finally {
+        fetchModelsButton.textContent = '拉取模型';
+        fetchModelsButton.disabled = false;
+        modelSelect.disabled = false;
+    }
+}
+if (apiIconWrapper) { apiIconWrapper.addEventListener('click', () => { loadApiSettings(); apiSettingsOverlay.style.display = 'flex'; }); }
+closeApiSettingsButton.addEventListener('click', () => { apiSettingsOverlay.style.display = 'none'; });
+saveApiSettingsButton.addEventListener('click', saveApiSettings);
+fetchModelsButton.addEventListener('click', fetchModels);
+apiSettingsOverlay.addEventListener('click', (e) => { if (e.target === apiSettingsOverlay) { apiSettingsOverlay.style.display = 'none'; } });
+
+// --- QQ主界面和AI助手列表的逻辑 ---
+const qqIconWrapper = document.getElementById('qqIconWrapper');
+const qqMainScreen = document.getElementById('qqMainScreen');
+const qqMainContent = document.getElementById('qqMainContent');
+const backToHomeFromMainButton = document.getElementById('backToHomeFromMain');
+const addAIButton = document.getElementById('addAIButton');
+const aiCreationScreen = document.getElementById('aiCreationScreen');
+const backToQQMainFromCreationButton = document.getElementById('backToQQMainFromCreation');
+const aiAvatarUrlInput = document.getElementById('aiAvatarUrlInput');
+const aiAvatarPlaceholder = document.getElementById('aiAvatarPlaceholder');
+const aiNameInput = document.getElementById('aiNameInput');
+const aiPersonaCreateInput = document.getElementById('aiPersonaCreate'); // AI创建界面的人设输入框
+const aiWorldBookInput = document.getElementById('aiWorldBookInput');
+const savePresetButton = document.getElementById('savePresetButton');
+const cancelPresetButton = document.getElementById('cancelPresetButton');
+const qqChatScreen = document.getElementById('qqChatScreen');
+const backToQQMainButton = document.getElementById('backToQQMain');
+const chatWindowTitle = document.getElementById('chatWindowTitle');
+const chatHistoryDiv = document.getElementById('chatHistory');
+const qqMessageInput = document.getElementById('qqMessageInput');
+const qqSendButton = document.getElementById('qqSendButton');
+const qqGenerateButton = document.getElementById('qqGenerateButton');
+const selectMessagesIcon = document.getElementById('selectMessagesIcon');
+const chatSettingsIcon = document.getElementById('chatSettingsIcon');
+let isDeleteMode = false;
+let isMessageSelectionMode = false;
+let selectedAssistantIdsForDeletion = [];
+let selectedMessageIdsForDeletion = [];
+let longPressTimer = null;
+let touchStartX = 0;
+let touchStartTime = 0;
+const deleteConfirmationOverlay = document.getElementById('deleteConfirmationOverlay');
+const confirmationMessageElement = document.getElementById('confirmationMessage');
+const cancelDeleteButton = document.getElementById('cancelDeleteButton');
+const confirmDeleteButton = document.getElementById('confirmDeleteButton');
+const generalSettingsOverlay = document.getElementById('generalSettingsOverlay');
+const closeGeneralSettingsButton = document.getElementById('closeGeneralSettingsButton');
+const userSettingsSection = document.getElementById('userSettingsSection');
+const aiSettingsSection = document.getElementById('aiSettingsSection');
+const contextMemorySection = document.getElementById('contextMemorySection');
+const userAvatarUrlSettingInput = document.getElementById('userAvatarUrlSetting');
+const userAvatarPlaceholderSetting = document.getElementById('userAvatarPlaceholderSetting');
+const userNameSettingInput = document.getElementById('userNameSetting');
+const userPersonaSettingInput = document.getElementById('userPersonaSetting');
+const aiAvatarUrlSettingInput = document.getElementById('aiAvatarUrlSetting');
+const aiAvatarPlaceholderSetting = document.getElementById('aiAvatarPlaceholderSetting');
+const aiNameSettingInput = document.getElementById('aiNameSetting');
+const aiPersonaSettingInput = document.getElementById('aiPersonaSetting'); // AI设置界面的人设输入框
+const aiWorldBookSettingInput = document.getElementById('aiWorldBookSetting');
+const contextMemoryRoundsSettingInput = document.getElementById('contextMemoryRoundsSetting');
+const saveAllSettingsButton = document.getElementById('saveAllSettingsButton');
+const cancelAllSettingsButton = document.getElementById('cancelAllSettings');
+const USER_PRESET_STORAGE_KEY = 'userPreset';
+const AI_ASSISTANTS_STORAGE_KEY = 'aiAssistants';
+const CHAT_HISTORIES_STORAGE_KEY = 'qq_chat_histories';
+const ACTIVE_AI_ASSISTANT_ID_STORAGE_KEY = 'activeAiAssistantId';
+const EMOJI_LIBRARY_STORAGE_KEY = 'emojiLibrary';
+const DEFAULT_AI_AVATAR_URL = `url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="%23E0E0E0"/><path d="M20 24c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z" fill="%23AAAAAA"/></svg>')`;
+let userPreset = JSON.parse(localStorage.getItem(USER_PRESET_STORAGE_KEY)) || { avatarUrl: '', name: '访客', persona: '' };
+let activeAiAssistantId = localStorage.getItem(ACTIVE_AI_ASSISTANT_ID_STORAGE_KEY) || null;
+let aiAssistants = JSON.parse(localStorage.getItem(AI_ASSISTANTS_STORAGE_KEY)) || [];
+let chatHistories = JSON.parse(localStorage.getItem(CHAT_HISTORIES_STORAGE_KEY)) || {};
+let emojiLibrary = JSON.parse(localStorage.getItem(EMOJI_LIBRARY_STORAGE_KEY)) || [];
+let currentQQTab = 'chat';
+
+// 语音录制相关变量
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingStartTime = 0;
+let recordingTimer = null;
+let isRecording = false;
+let recordedDuration = 0;
+// --- MODIFIED JS START ---
+let recognition = null;
+let isRecognizing = false;
+let recognizedText = '';
+let currentAudioBlob = null;
+let currentVoiceDuration = 0;
+// --- MODIFIED JS END ---
+
+function switchQQTab(tabName) {
+    currentQQTab = tabName;
+    const chatPanel = document.getElementById('qqMainContent');
+    const discoverPanel = document.getElementById('qqDiscoverPanel');
+    const mePanel = document.getElementById('qqMePanel');
+    const qqMainTitle = document.getElementById('qqMainTitle');
+    const addAIButton = document.getElementById('addAIButton');
+    const tabs = document.querySelectorAll('.qq-bottom-bar .tab-item');
+    tabs.forEach(tab => tab.classList.remove('active'));
+    chatPanel.style.display = 'none';
+    discoverPanel.style.display = 'none';
+    mePanel.style.display = 'none';
+    switch(tabName) {
+        case 'chat':
+            chatPanel.style.display = 'flex';
+            document.getElementById('tabChat').classList.add('active');
+            qqMainTitle.textContent = 'QQ';
+            addAIButton.style.display = 'flex';
+            break;
+        case 'discover':
+            discoverPanel.style.display = 'flex';
+            document.getElementById('tabDiscover').classList.add('active');
+            qqMainTitle.textContent = '发现';
+            addAIButton.style.display = 'none';
+            break;
+        case 'me':
+            mePanel.style.display = 'flex';
+            document.getElementById('tabMe').classList.add('active');
+            qqMainTitle.textContent = '我';
+            addAIButton.style.display = 'none';
+            break;
+    }
+}
+function updateAvatarPreview(url, placeholderElement) {
+    if (url) {
+        placeholderElement.style.backgroundImage = `url('${url}')`;
+        placeholderElement.querySelector('span').style.display = 'none';
+    } else {
+        placeholderElement.style.backgroundImage = '';
+        placeholderElement.querySelector('span').style.display = 'block';
+    }
+}
+aiAvatarUrlInput.addEventListener('input', (event) => { updateAvatarPreview(event.target.value.trim(), aiAvatarPlaceholder); });
+savePresetButton.addEventListener('click', () => {
+    const name = aiNameInput.value.trim();
+    const persona = aiPersonaCreateInput.value.trim(); // 使用正确的ID
+    if (!name || !persona) { alert('AI助手的姓名和人设不能为空！'); return; }
+    const newAssistant = { id: Date.now(), name, persona, worldBook: aiWorldBookInput.textContent.trim(), avatar: aiAvatarUrlInput.value.trim(), contextMemoryRounds: 0, timeAwareness: false };
+    aiAssistants.push(newAssistant);
+    localStorage.setItem(AI_ASSISTANTS_STORAGE_KEY, JSON.stringify(aiAssistants));
+    alert(`AI助手 "${name}" 已保存！`);
+    aiAvatarUrlInput.value = ''; updateAvatarPreview('', aiAvatarPlaceholder); aiNameInput.value = ''; aiPersonaCreateInput.value = ''; aiWorldBookInput.textContent = '选择世界书条目'; // 清空创建界面的输入
+    loadAiAssistantsList();
+    showScreen('qqMainScreen');
+});
+cancelPresetButton.addEventListener('click', () => {
+    aiAvatarUrlInput.value = ''; updateAvatarPreview('', aiAvatarPlaceholder); aiNameInput.value = ''; aiPersonaCreateInput.value = ''; aiWorldBookInput.textContent = '选择世界书条目'; // 清空创建界面的输入
+    showScreen('qqMainScreen');
+});
+function loadAiAssistantsList() {
+    qqMainContent.innerHTML = '';
+    if (aiAssistants.length === 0) {
+        qqMainContent.innerHTML = '<p style="text-align: center; color: #888; margin-top: 20px;">暂无AI助手，点击右上角“⊕”添加。</p>';
+        return;
+    }
+    aiAssistants.forEach(assistant => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'ai-assistant-item';
+        itemDiv.setAttribute('data-assistant-id', assistant.id);
+        const avatarBg = assistant.avatar ? `url('${assistant.avatar}')` : DEFAULT_AI_AVATAR_URL;
+        itemDiv.innerHTML = `<div class="avatar" style="background-image: ${avatarBg};"></div><div class="name">${assistant.name}</div>`;
+        itemDiv.addEventListener('touchstart', (e) => handleItemTouchStart(e, assistant.id, itemDiv));
+        itemDiv.addEventListener('touchend', (e) => handleItemTouchEnd(e, assistant.id, itemDiv));
+        itemDiv.addEventListener('click', (e) => {
+            if (!isDeleteMode) {
+                activeAiAssistantId = assistant.id;
+                localStorage.setItem(ACTIVE_AI_ASSISTANT_ID_STORAGE_KEY, activeAiAssistantId);
+                chatWindowTitle.textContent = assistant.name;
+                loadChatHistory(assistant.id);
+                showScreen('qqChatScreen');
+            }
+        });
+        qqMainContent.appendChild(itemDiv);
+    });
+}
+function loadChatHistory(assistantId) {
+    chatHistoryDiv.innerHTML = '';
+    const messages = chatHistories[assistantId] || [];
+    
+    messages.forEach((msg, index) => {
+        if (!msg.id) { 
+            msg.id = `msg_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`; 
+        }
+        
+        const displayRole = msg.role === 'assistant' ? 'ai' : msg.role;
+        
+        // --- MODIFIED JS START ---
+        if (msg.type === 'voice') {
+            addVoiceMessageToChat(msg.duration, displayRole, msg.id, msg.audioUrl, msg.voiceText);
+        } else {
+            addMessageToChat(msg.content, displayRole, msg.id, msg.type || 'text', msg.imageUrl, msg.caption);
+        }
+        // --- MODIFIED JS END ---
+    });
+    
+    if (messages.length > 0) {
+        localStorage.setItem(CHAT_HISTORIES_STORAGE_KEY, JSON.stringify(chatHistories));
+    }
+    
+    chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+}
+
+function addMessageToChat(text, role, messageId = null, type = 'text', imageUrl = null, caption = null) {
+    const msgId = messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date();
+    const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    const existingMessage = document.querySelector(`[data-message-id="${msgId}"]`);
+    if (existingMessage) {
+        console.warn(`消息ID ${msgId} 已存在，跳过渲染`);
+        return;
+    }
+    
+    const messageWrapper = document.createElement('div');
+    const cssRole = role === 'assistant' ? 'ai' : role;
+    messageWrapper.className = `message-wrapper ${cssRole}`;
+    messageWrapper.setAttribute('data-message-id', msgId);
+    
+    const messageBubble = document.createElement('div');
+    messageBubble.className = `message-bubble ${cssRole}`;
+    
+    const avatarContainer = document.createElement('div');
+    avatarContainer.className = 'avatar-container';
+    
+    const avatarElement = document.createElement('div');
+    avatarElement.className = 'message-avatar';
+    const currentAssistant = aiAssistants.find(a => a.id == activeAiAssistantId);
+    
+    let avatarBg;
+    if (cssRole === 'user') { 
+        avatarBg = userPreset.avatarUrl ? `url('${userPreset.avatarUrl}')` : DEFAULT_AI_AVATAR_URL; 
+    } else { 
+        avatarBg = currentAssistant && currentAssistant.avatar ? `url('${currentAssistant.avatar}')` : DEFAULT_AI_AVATAR_URL; 
+    }
+    avatarElement.style.backgroundImage = avatarBg;
+    
+    const timestampElement = document.createElement('div');
+    timestampElement.className = 'message-timestamp';
+    timestampElement.textContent = timestamp;
+    
+    avatarContainer.appendChild(avatarElement);
+    avatarContainer.appendChild(timestampElement);
+    
+    const messageContentElement = document.createElement('div');
+    messageContentElement.className = 'message-content';
+    
+    if (type === 'html') {
+        messageContentElement.classList.add('html');
+        messageContentElement.innerHTML = text;
+        messageContentElement.style.background = 'none';
+        messageContentElement.style.padding = '8px 0';
+        messageContentElement.style.margin = '0';
+        messageContentElement.style.borderRadius = '0';
+        messageContentElement.style.maxWidth = '280px';
+        messageContentElement.style.overflow = 'auto';
+    } else if (type === 'emoji' && imageUrl) {
+        messageContentElement.classList.add('emoji');
+        messageContentElement.innerHTML = `<img src="${imageUrl}" alt="表情包" style="max-width: 120px; height: auto; border-radius: 8px;">`;
+        messageContentElement.style.background = 'none';
+        messageContentElement.style.padding = '0';
+        messageContentElement.style.margin = '0';
+        messageContentElement.style.borderRadius = '0';
+    } else {
+        messageContentElement.textContent = text;
+    }
+    
+    messageBubble.appendChild(avatarContainer);
+    messageBubble.appendChild(messageContentElement);
+    messageWrapper.appendChild(messageBubble);
+    chatHistoryDiv.appendChild(messageWrapper);
+    
+    messageWrapper.addEventListener('click', (e) => {
+        if (isMessageSelectionMode) {
+            e.stopPropagation();
+            const clickedMsgId = messageWrapper.getAttribute('data-message-id');
+            const isSelected = messageWrapper.classList.toggle('selected-for-deletion');
+            
+            if (isSelected) { 
+                if (!selectedMessageIdsForDeletion.includes(clickedMsgId)) {
+                    selectedMessageIdsForDeletion.push(clickedMsgId); 
+                }
+            } else { 
+                selectedMessageIdsForDeletion = selectedMessageIdsForDeletion.filter(id => id !== clickedMsgId); 
+            }
+            updateTopBarButtons();
+        }
+    });
+    
+    chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+}
+
+function performMessageDeletion() {
+    if (selectedMessageIdsForDeletion.length === 0) { 
+        exitMessageSelectionMode(); 
+        return; 
+    }
+    
+    if (activeAiAssistantId && chatHistories[activeAiAssistantId]) {
+        chatHistories[activeAiAssistantId] = chatHistories[activeAiAssistantId].filter(msg => 
+            !selectedMessageIdsForDeletion.includes(msg.id)
+        );
+        
+        localStorage.setItem(CHAT_HISTORIES_STORAGE_KEY, JSON.stringify(chatHistories));
+        
+        selectedMessageIdsForDeletion.forEach(msgId => {
+            const messageElement = document.querySelector(`[data-message-id="${msgId}"]`);
+            if (messageElement) {
+                messageElement.remove();
+            }
+        });
+        
+        alert(`已成功删除 ${selectedMessageIdsForDeletion.length} 条消息。`);
+    }
+    
+    exitMessageSelectionMode();
+}
+
+function exitMessageSelectionMode() {
+    isMessageSelectionMode = false;
+    selectedMessageIdsForDeletion = [];
+    
+    document.querySelectorAll('.message-wrapper.selected-for-deletion').forEach(item => {
+        item.classList.remove('selected-for-deletion');
+    });
+    
+    updateTopBarButtons();
+    deleteConfirmationOverlay.style.display = 'none';
+    
+    if (document.getElementById('qqChatScreen').classList.contains('active')) { 
+        floatingBallContainer.style.display = 'flex'; 
+    }
+}
+
+function handleItemTouchStart(e, assistantId, itemElement) {
+    e.preventDefault();
+    touchStartX = e.touches[0].clientX;
+    touchStartTime = Date.now();
+    longPressTimer = setTimeout(() => {
+        if (!isDeleteMode) {
+            isDeleteMode = true;
+            updateTopBarButtons();
+            selectedAssistantIdsForDeletion = [assistantId];
+            itemElement.classList.add('selected-for-deletion');
+            updateTopBarButtons();
+        }
+    }, 800);
+}
+function handleItemTouchEnd(e, assistantId, itemElement) {
+    clearTimeout(longPressTimer);
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndTime = Date.now();
+    const touchDuration = touchEndTime - touchStartTime;
+    const touchDistance = Math.abs(touchEndX - touchStartX);
+    if (isDeleteMode && touchDuration >= 800 && touchDistance < 10) { return; }
+    if (!isDeleteMode) {
+        activeAiAssistantId = assistantId;
+        const assistant = aiAssistants.find(a => a.id === assistantId);
+        if (assistant) {
+            localStorage.setItem(ACTIVE_AI_ASSISTANT_ID_STORAGE_KEY, activeAiAssistantId);
+            chatWindowTitle.textContent = assistant.name;
+            loadChatHistory(assistant.id);
+            showScreen('qqChatScreen');
+        }
+    } else {
+        const isSelected = itemElement.classList.toggle('selected-for-deletion');
+        if (isSelected) { selectedAssistantIdsForDeletion.push(assistantId); }
+        else { selectedAssistantIdsForDeletion = selectedAssistantIdsForDeletion.filter(id => id !== assistantId); }
+        updateTopBarButtons();
+    }
+}
+function sendUserMessage() {
+    const messageText = qqMessageInput.value.trim();
+    if (messageText) {
+        const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        addMessageToChat(messageText, 'user', messageId);
+        if (!chatHistories[activeAiAssistantId]) { chatHistories[activeAiAssistantId] = []; }
+        chatHistories[activeAiAssistantId].push({ id: messageId, role: 'user', content: messageText });
+        localStorage.setItem(CHAT_HISTORIES_STORAGE_KEY, JSON.stringify(chatHistories));
+        qqMessageInput.value = '';
+        qqMessageInput.style.height = 'auto';
+    }
+}
+
+async function generateAiResponse() {
+    if (qqMessageInput.value.trim()) { alert('请先发送输入框中的消息！'); return; }
+    if (!activeAiAssistantId || !chatHistories[activeAiAssistantId] || chatHistories[activeAiAssistantId].length === 0) { alert('请先发送消息！'); return; }
+    qqGenerateButton.disabled = true; qqSendButton.disabled = true; qqMessageInput.disabled = true;
+    
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+        typingIndicator.style.display = 'block';
+    }
+
+    const baseUrl = localStorage.getItem('api_base_url');
+    const apiKey = localStorage.getItem('api_key');
+    const modelName = localStorage.getItem('api_model_name');
+    if (!baseUrl || !apiKey || !modelName) { alert('请先完成API设置！'); qqGenerateButton.disabled = false; qqSendButton.disabled = false; qqMessageInput.disabled = false; return; }
+    const currentAssistant = aiAssistants.find(a => a.id == activeAiAssistantId);
+    const persona = currentAssistant ? currentAssistant.persona : "你是一个友善的AI助手。";
+    const contextMemoryRounds = currentAssistant?.contextMemoryRounds ? parseInt(currentAssistant.contextMemoryRounds) : 0;
+    
+    let systemPrompt = `你是"${currentAssistant.name}"，你的人设是：${persona}
+
+【核心行为准则】：
+1. 你要完全沉浸在角色中，严格按照人设行事，绝对不能OOC（Out of Character）
+2. 你正在与你的恋人/暧昧对象"${userPreset.name}"聊天，语气要亲密、自然、有爱意
+3. 根据人设中的性格特点调整亲密程度：可爱型、温柔型、高冷型、活泼型等
+4. 每次回复分成2-5条消息，用\\n分隔，模拟真实聊天节奏
+5. 语言要真实自然，避免AI腔调，像真正的恋人在聊天
+
+【严格禁止的油腻用词】：
+- 小妖精、小野猫
+- "女人你在玩火"、"你知道自己在做什么吗？"
+- "再说一遍"、"像一颗石子投进水面"
+- "不容置喙"、"野兽般的低吼"
+- 以及任何过于油腻、做作的表达
+
+【严格禁止的语气短句】：
+- 不得发送"呵"、"嗯?"、"哈"等单独的语气短句
+- 但可以配合语境发送单独的表情符号：
+  * 无语时：……
+  * 疑惑时：？
+  * 惊讶时：！
+  * 思考时：...
+- 要有活人感，像真人对话
+
+【表情符号使用规则】：
+- 除非人设中明确说明角色喜欢使用emoji，否则尽量少用
+- 优先使用文字表达情感，让语言更有温度
+
+【特殊功能】：
+1. 如果需要发送HTML/CSS代码，直接发送完整代码，不要分行
+
+现在开始与你的恋人"${userPreset.name}"聊天，记住要完全符合你的人设，语言亲密自然！`;
+    
+    if (currentAssistant?.timeAwareness) {
+        const now = new Date();
+        const currentTimeString = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        systemPrompt += `\n\n重要参考信息：当前的现实世界日期和时间是 ${currentTimeString}。`;
+    }
+    let apiMessages = [{ role: "system", content: systemPrompt }];
+    const historySlice = contextMemoryRounds > 0 ? chatHistories[activeAiAssistantId].slice(-contextMemoryRounds * 2) : chatHistories[activeAiAssistantId];
+    const processedMessages = historySlice.map(msg => {
+        if (msg.type === 'emoji' && msg.role === 'user') { return { role: msg.role, content: `用户发送了一个表情包，备注是："${msg.caption || '无备注'}"。` }; }
+        return { role: msg.role, content: msg.content };
+    });
+    apiMessages.push(...processedMessages);
+    
+    try {
+        const response = await fetch(`${baseUrl}/v1/chat/completions`, { 
+            method: 'POST', 
+            headers: { 
+                'Authorization': `Bearer ${apiKey}`, 
+                'Content-Type': 'application/json' 
+            }, 
+            body: JSON.stringify({ 
+                model: modelName, 
+                messages: apiMessages, 
+                temperature: 0.8, 
+                max_tokens: 500, 
+                top_p: 0.9 
+            }) 
+        });
+        
+        if (!response.ok) { 
+            const errorData = await response.json(); 
+            throw new Error(`API Error: ${response.status} - ${errorData.error ? errorData.error.message : response.statusText}`); 
+        }
+        
+        const data = await response.json();
+        const aiResponseContent = data.choices[0].message.content.trim();
+
+        const isCodeContent = aiResponseContent.includes('<') && aiResponseContent.includes('>') || 
+                             aiResponseContent.includes('```') || 
+                             aiResponseContent.toLowerCase().includes('html') ||
+                             aiResponseContent.toLowerCase().includes('css') ||
+                             aiResponseContent.toLowerCase().includes('javascript');
+        
+        if (isCodeContent) {
+            const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            addMessageToChat(aiResponseContent, 'ai', messageId, 'html');
+            if (!chatHistories[activeAiAssistantId]) { chatHistories[activeAiAssistantId] = []; }
+            chatHistories[activeAiAssistantId].push({ id: messageId, role: 'assistant', content: aiResponseContent, type: 'html' });
+            localStorage.setItem(CHAT_HISTORIES_STORAGE_KEY, JSON.stringify(chatHistories));
+        } else {
+            const messages = aiResponseContent.split('\\n').filter(msg => msg.trim() !== '');
+            
+            if (messages.length < 2) {
+                const singleMessage = messages[0] || aiResponseContent;
+                const sentences = singleMessage.split(/[。！？.!?]/).filter(s => s.trim());
+                
+                if (sentences.length >= 2) {
+                    messages.splice(0, messages.length, ...sentences.map(s => s.trim() + (s.includes('？') ? '' : '。')));
+                } else if (singleMessage.length > 15) {
+                    const mid = Math.floor(singleMessage.length / 2);
+                    const breakPoint = singleMessage.indexOf('，', mid) !== -1 ? singleMessage.indexOf('，', mid) + 1 : mid;
+                    messages[0] = singleMessage.substring(0, breakPoint).trim();
+                    messages[1] = singleMessage.substring(breakPoint).trim();
+                }
+            }
+            
+            messages.forEach((message, index) => {
+                setTimeout(() => {
+                    const messageId = `msg_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
+                    addMessageToChat(message.trim(), 'ai', messageId);
+                    if (!chatHistories[activeAiAssistantId]) { chatHistories[activeAiAssistantId] = []; }
+                    chatHistories[activeAiAssistantId].push({ id: messageId, role: 'assistant', content: message.trim() });
+                    localStorage.setItem(CHAT_HISTORIES_STORAGE_KEY, JSON.stringify(chatHistories));
+                }, index * 800);
+            });
+        }
+
+    } catch (error) {
+        console.error('API调用失败：', error);
+        alert('AI回复失败，请检查API设置、网络连接或API Key是否有效。错误信息：' + error.message);
+    } finally {
+        qqGenerateButton.disabled = false; 
+        qqSendButton.disabled = false; 
+        qqMessageInput.disabled = false;
+        
+        if (typingIndicator) {
+            typingIndicator.style.display = 'none';
+        }
+    }
+}
+
+const qqMainTopBar = document.querySelector('.qq-main-top-bar');
+const backToHomeFromMainButtonInBar = document.getElementById('backToHomeFromMain');
+const addAIButtonInBar = document.getElementById('addAIButton');
+const deleteModeCancelButton = document.getElementById('deleteModeCancelButton');
+const deleteModeActionButton = document.getElementById('deleteModeActionButton');
+const qqChatTopBar = document.querySelector('.qq-top-bar');
+const backToQQMainButtonInChatBar = document.getElementById('backToQQMain');
+const chatDeleteModeCancelButton = document.getElementById('chatDeleteModeCancelButton');
+const chatDeleteModeActionButton = document.getElementById('chatDeleteModeActionButton');
+function updateTopBarButtons() {
+    const currentScreenId = document.querySelector('.screen.active')?.id || '';
+    if (currentScreenId === 'qqMainScreen') {
+        const displayDelete = isDeleteMode;
+        addAIButtonInBar.style.display = displayDelete ? 'none' : 'flex';
+        backToHomeFromMainButtonInBar.style.display = displayDelete ? 'none' : 'flex';
+        deleteModeCancelButton.style.display = displayDelete ? 'flex' : 'none';
+        deleteModeActionButton.style.display = displayDelete && selectedAssistantIdsForDeletion.length > 0 ? 'flex' : 'none';
+    } else if (currentScreenId === 'qqChatScreen') {
+        const displayDelete = isMessageSelectionMode;
+        backToQQMainButtonInChatBar.style.display = displayDelete ? 'none' : 'flex';
+        chatSettingsIcon.style.display = displayDelete ? 'none' : 'flex';
+        selectMessagesIcon.style.display = displayDelete ? 'none' : 'flex';
+        chatDeleteModeCancelButton.style.display = displayDelete ? 'flex' : 'none';
+        chatDeleteModeActionButton.style.display = displayDelete && selectedMessageIdsForDeletion.length > 0 ? 'flex' : 'none';
+    }
+}
+function toggleDeleteMode(enterMode) {
+    isDeleteMode = enterMode;
+    if (!enterMode) {
+        selectedAssistantIdsForDeletion = [];
+        document.querySelectorAll('.ai-assistant-item.selected-for-deletion').forEach(item => item.classList.remove('selected-for-deletion'));
+        deleteConfirmationOverlay.style.display = 'none';
+    }
+    updateTopBarButtons();
+}
+function showDeleteConfirmation(type) {
+    deleteConfirmationOverlay.style.display = 'flex';
+    confirmationMessageElement.innerHTML = type === 'assistant' ? `是否要彻底删除这 ${selectedAssistantIdsForDeletion.length} 个AI预设？<br>此操作无法恢复。` : `是否要彻底删除这 ${selectedMessageIdsForDeletion.length} 条聊天记录？<br>此操作无法恢复。`;
+}
+function performDeletion() {
+    const idsToDelete = [...selectedAssistantIdsForDeletion];
+    aiAssistants = aiAssistants.filter(assistant => !idsToDelete.includes(assistant.id));
+    idsToDelete.forEach(id => { if (chatHistories[id]) delete chatHistories[id]; });
+    localStorage.setItem(AI_ASSISTANTS_STORAGE_KEY, JSON.stringify(aiAssistants));
+    localStorage.setItem(CHAT_HISTORIES_STORAGE_KEY, JSON.stringify(chatHistories));
+    alert(`已成功删除 ${idsToDelete.length} 个AI助手。`);
+    toggleDeleteMode(false);
+    loadAiAssistantsList();
+}
+function toggleSection(sectionElement) {
+    const isExpanded = sectionElement.classList.toggle('expanded');
+    sectionElement.querySelector('.settings-content').classList.toggle('expanded');
+    sectionElement.querySelector('.arrow').style.transform = isExpanded ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+function loadUserSettings() {
+    userPreset = JSON.parse(localStorage.getItem(USER_PRESET_STORAGE_KEY)) || { avatarUrl: '', name: '访客', persona: '' };
+    userAvatarUrlSettingInput.value = userPreset.avatarUrl || '';
+    updateAvatarPreview(userAvatarUrlSettingInput.value, userAvatarPlaceholderSetting);
+    userNameSettingInput.value = userPreset.name;
+    userPersonaSettingInput.value = userPreset.persona;
+}
+function saveUserSettings() {
+    userPreset = { avatarUrl: userAvatarUrlSettingInput.value.trim(), name: userNameSettingInput.value.trim(), persona: userPersonaSettingInput.value.trim() };
+    localStorage.setItem(USER_PRESET_STORAGE_KEY, JSON.stringify(userPreset));
+    return true;
+}
+function loadAiSettings() {
+    if (!activeAiAssistantId) { aiSettingsSection.style.display = 'none'; return; }
+    const assistant = aiAssistants.find(a => a.id == activeAiAssistantId);
+    if (assistant) {
+        aiAvatarUrlSettingInput.value = assistant.avatar || '';
+        updateAvatarPreview(aiAvatarUrlSettingInput.value, aiAvatarPlaceholderSetting);
+        aiNameSettingInput.value = assistant.name;
+        aiPersonaSettingInput.value = assistant.persona; // 使用正确的ID
+        aiWorldBookSettingInput.textContent = assistant.worldBook || '选择世界书条目';
+        contextMemoryRoundsSettingInput.value = assistant.contextMemoryRounds || 0;
+        document.getElementById('timeAwarenessToggle').checked = assistant.timeAwareness || false;
+        aiSettingsSection.style.display = 'block';
+    } else { aiSettingsSection.style.display = 'none'; }
+}
+function saveAiSettings() {
+    if (aiSettingsSection.style.display === 'none' || !activeAiAssistantId) return true;
+    const assistantIndex = aiAssistants.findIndex(a => a.id == activeAiAssistantId);
+    if (assistantIndex !== -1) {
+        const updatedAssistant = {
+            ...aiAssistants[assistantIndex],
+            avatar: aiAvatarUrlSettingInput.value.trim(),
+            name: aiNameSettingInput.value.trim(),
+            persona: aiPersonaSettingInput.value.trim(), // 使用正确的ID
+            worldBook: aiWorldBookSettingInput.textContent.trim(),
+            contextMemoryRounds: parseInt(contextMemoryRoundsSettingInput.value) || 0,
+            timeAwareness: document.getElementById('timeAwarenessToggle').checked
+        };
+        aiAssistants[assistantIndex] = updatedAssistant;
+        localStorage.setItem(AI_ASSISTANTS_STORAGE_KEY, JSON.stringify(aiAssistants));
+        loadAiAssistantsList();
+        if (activeAiAssistantId == updatedAssistant.id) { chatWindowTitle.textContent = updatedAssistant.name; }
+        return true;
+    }
+    return false;
+}
+function saveAllSettings() { if (saveUserSettings() && saveAiSettings()) { alert('所有设置已成功保存！'); closeGeneralSettings(); } }
+function closeGeneralSettings() {
+    generalSettingsOverlay.style.display = 'none';
+    document.querySelectorAll('.settings-section.expanded').forEach(section => toggleSection(section));
+    if (document.getElementById('qqChatScreen').classList.contains('active')) { floatingBallContainer.style.display = 'flex'; }
+}
+qqIconWrapper.addEventListener('click', () => { toggleDeleteMode(false); isMessageSelectionMode = false; switchQQTab('chat'); loadAiAssistantsList(); showScreen('qqMainScreen'); });
+backToHomeFromMainButton.addEventListener('click', () => { toggleDeleteMode(false); isMessageSelectionMode = false; showScreen('homeScreen'); });
+addAIButton.addEventListener('click', () => { toggleDeleteMode(false); isMessageSelectionMode = false; showScreen('aiCreationScreen'); });
+selectMessagesIcon.addEventListener('click', () => { isMessageSelectionMode = true; selectedMessageIdsForDeletion = []; updateTopBarButtons(); floatingBallContainer.style.display = 'none'; });
+chatSettingsIcon.addEventListener('click', () => { 
+    console.log('点击了聊天设置按钮'); // 添加调试日志
+    isDeleteMode = false; 
+    isMessageSelectionMode = false; 
+    updateTopBarButtons(); 
+    loadUserSettings(); 
+    loadAiSettings(); 
+    generalSettingsOverlay.style.display = 'flex'; 
+    if (floatingBallContainer) {
+        floatingBallContainer.style.display = 'none'; 
+    }
+});
+deleteModeCancelButton.addEventListener('click', () => toggleDeleteMode(false));
+chatDeleteModeCancelButton.addEventListener('click', () => exitMessageSelectionMode());
+deleteModeActionButton.addEventListener('click', () => { if (isDeleteMode) showDeleteConfirmation('assistant'); });
+chatDeleteModeActionButton.addEventListener('click', () => { if (isMessageSelectionMode) showDeleteConfirmation('message'); });
+backToQQMainFromCreationButton.addEventListener('click', () => showScreen('qqMainScreen'));
+backToQQMainButton.addEventListener('click', () => { exitMessageSelectionMode(); showScreen('qqMainScreen'); activeAiAssistantId = null; localStorage.removeItem(ACTIVE_AI_ASSISTANT_ID_STORAGE_KEY); });
+aiWorldBookInput.addEventListener('click', () => alert('世界书功能暂未开发。'));
+aiWorldBookSettingInput.addEventListener('click', () => alert('世界书功能暂未开发。'));
+settingsIconWrapper.addEventListener('click', () => { console.log('点击了主页设置图标！'); });
+qqMessageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendUserMessage(); } });
+qqMessageInput.addEventListener('input', () => { qqMessageInput.style.height = 'auto'; qqMessageInput.style.height = qqMessageInput.scrollHeight + 'px'; });
+qqSendButton.addEventListener('click', async function() {
+    if (!activeAiAssistantId) return;
+    const messages = chatHistories[activeAiAssistantId];
+    if (!messages || messages.length === 0) return;
+    let lastUserMessageIndex = messages.findLastIndex(msg => msg.role === 'user');
+    if (lastUserMessageIndex === -1 || !messages.some((msg, i) => i > lastUserMessageIndex && msg.role === 'assistant')) { alert('当前没有AI回复可以重新生成！'); return; }
+    chatHistories[activeAiAssistantId] = messages.slice(0, lastUserMessageIndex + 1);
+    localStorage.setItem(CHAT_HISTORIES_STORAGE_KEY, JSON.stringify(chatHistories));
+    loadChatHistory(activeAiAssistantId);
+    await generateAiResponse();
+});
+qqGenerateButton.addEventListener('click', generateAiResponse);
+closeGeneralSettingsButton.addEventListener('click', closeGeneralSettings);
+saveAllSettingsButton.addEventListener('click', saveAllSettings);
+cancelAllSettingsButton.addEventListener('click', closeGeneralSettings);
+userAvatarUrlSettingInput.addEventListener('input', (e) => updateAvatarPreview(e.target.value.trim(), userAvatarPlaceholderSetting));
+aiAvatarUrlSettingInput.addEventListener('input', (e) => updateAvatarPreview(e.target.value.trim(), aiAvatarPlaceholderSetting));
+document.querySelectorAll('.settings-section .section-header').forEach(header => { header.addEventListener('click', () => toggleSection(header.closest('.settings-section'))); });
+cancelDeleteButton.addEventListener('click', () => deleteConfirmationOverlay.style.display = 'none');
+confirmDeleteButton.addEventListener('click', () => { if (isDeleteMode) performDeletion(); else if (isMessageSelectionMode) performMessageDeletion(); deleteConfirmationOverlay.style.display = 'none'; });
+const floatingBallContainer = document.getElementById('floatingBallContainer');
+const floatingPanel = document.getElementById('floatingPanel');
+let isDragging = false, offsetX, offsetY, initialTouchX, initialTouchY;
+let lastTouchTime = 0;
+const DRAG_THRESHOLD_PX = 10, CLICK_THRESHOLD_MS = 200;
+floatingBallContainer.addEventListener('touchstart', (e) => {
+    isDragging = false; const touch = e.touches[0]; initialTouchX = touch.clientX; initialTouchY = touch.clientY; lastTouchTime = Date.now();
+    const ballRect = floatingBallContainer.getBoundingClientRect(); offsetX = touch.clientX - ballRect.left; offsetY = touch.clientY - ballRect.top;
+    floatingBallContainer.classList.add('dragging'); e.preventDefault();
+});
+floatingBallContainer.addEventListener('touchmove', (e) => {
+    const touch = e.touches[0];
+    if (Math.abs(touch.clientX - initialTouchX) > DRAG_THRESHOLD_PX || Math.abs(touch.clientY - initialTouchY) > DRAG_THRESHOLD_PX) {
+        isDragging = true; let newX = touch.clientX - offsetX; let newY = touch.clientY - offsetY;
+        const frameRect = document.querySelector('.phone-frame').getBoundingClientRect(); const ballRect = floatingBallContainer.getBoundingClientRect();
+        newX = Math.max(0, Math.min(frameRect.width - ballRect.width + 20, newX)); newY = Math.max(0, Math.min(frameRect.height - ballRect.height, newY));
+        floatingBallContainer.style.left = `${newX}px`; floatingBallContainer.style.top = `${newY}px`;
+        floatingBallContainer.style.right = 'auto'; floatingBallContainer.style.bottom = 'auto';
+    }
+});
+floatingBallContainer.addEventListener('touchend', (e) => {
+    const touch = e.changedTouches[0];
+    if (!isDragging && Math.abs(touch.clientX - initialTouchX) < DRAG_THRESHOLD_PX && Math.abs(touch.clientY - initialTouchY) < DRAG_THRESHOLD_PX && (Date.now() - lastTouchTime) < CLICK_THRESHOLD_MS) {
+        floatingPanel.classList.toggle('visible'); if (floatingPanel.classList.contains('visible')) generateFloatingPanelContent();
+    }
+    floatingBallContainer.classList.remove('dragging');
+});
+function generateFloatingPanelContent() {
+    floatingPanel.innerHTML = '';
+    const items = [
+        { text: '表情包', action: () => { openEmojiMainPanel(); floatingPanel.classList.remove('visible'); } },
+        { text: '清除聊天记录', action: () => { if (confirm(`确定要清空与 "${chatWindowTitle.textContent}" 的聊天记录吗？`)) { if (chatHistories[activeAiAssistantId]) { chatHistories[activeAiAssistantId] = []; localStorage.setItem(CHAT_HISTORIES_STORAGE_KEY, JSON.stringify(chatHistories)); loadChatHistory(activeAiAssistantId); } floatingPanel.classList.remove('visible'); } } },
+        { text: '视频通话', action: () => { alert('视频通话功能开发中...'); floatingPanel.classList.remove('visible'); } },
+        { text: '发送图片', action: () => { alert('发送图片功能开发中...'); floatingPanel.classList.remove('visible'); } },
+        { text: '发送链接', action: () => { alert('发送链接功能开发中...'); floatingPanel.classList.remove('visible'); } },
+        { text: '发送语音', action: () => { openVoiceRecordPanel(); floatingPanel.classList.remove('visible'); } }
+    ];
+    items.forEach(item => {
+        const panelItemDiv = document.createElement('div');
+        panelItemDiv.className = 'panel-item';
+        panelItemDiv.textContent = item.text;
+        panelItemDiv.addEventListener('click', item.action);
+        floatingPanel.appendChild(panelItemDiv);
+    });
+}
+
+// --- 表情包功能相关逻辑 ---
+const emojiMainPanel = document.getElementById('emojiMainPanel');
+const closeEmojiMainPanelButton = document.getElementById('closeEmojiMainPanelButton');
+const addEmojiButton = document.getElementById('addEmojiButton');
+const deleteEmojiModeButton = document.getElementById('deleteEmojiModeButton');
+const cancelEmojiDeleteButton = document.getElementById('cancelEmojiDeleteButton');
+const confirmEmojiDeleteButton = document.getElementById('confirmEmojiDeleteButton');
+const emojiGridContainer = document.getElementById('emojiGridContainer');
+const addEmojiOptionsOverlay = document.getElementById('addEmojiOptionsOverlay');
+const localUploadOption = document.getElementById('localUploadOption');
+const urlImportOption = document.getElementById('urlImportOption');
+const cancelAddEmojiOptionsButton = document.getElementById('cancelAddEmojiOptionsButton');
+const localEmojiFileInput = document.getElementById('localEmojiFileInput');
+const emojiCaptionOverlay = document.getElementById('emojiCaptionOverlay');
+const emojiCaptionCard = document.getElementById('emojiCaptionCard');
+const emojiCaptionInput = document.getElementById('emojiCaptionInput');
+const cancelEmojiCaptionButton = document.getElementById('cancelEmojiCaptionButton');
+const saveEmojiCaptionButton = document.getElementById('saveEmojiCaptionButton');
+let currentEmojiImageUrl = '';
+let editingEmojiId = null;
+let isEmojiDeleteMode = false;
+let selectedEmojiIdsForDeletion = [];
+
+function openEmojiMainPanel() {
+    console.log('打开表情包面板');
+    isEmojiDeleteMode = false;
+    selectedEmojiIdsForDeletion = [];
+    updateEmojiPanelButtons();
+    emojiMainPanel.style.display = 'flex';
+    setTimeout(() => { 
+        emojiMainPanel.classList.add('visible'); 
+    }, 10);
+    loadEmojis();
+}
+
+function closeEmojiMainPanel() {
+    console.log('关闭表情包面板');
+    if (isEmojiDeleteMode) {
+        exitEmojiDeleteMode();
+    }
+    emojiMainPanel.classList.remove('visible');
+    setTimeout(() => {
+        emojiMainPanel.style.display = 'none';
+    }, 300);
+    closeAddEmojiOptionsOverlay();
+    closeEmojiCaptionOverlay();
+}
+
+function closeAddEmojiOptionsOverlay() {
+    addEmojiOptionsOverlay.classList.remove('visible');
+    setTimeout(() => {
+        addEmojiOptionsOverlay.style.display = 'none';
+    }, 300);
+}
+
+function closeEmojiCaptionOverlay() {
+    emojiCaptionOverlay.classList.remove('visible');
+}
+
+function sendEmoji(imageUrl, caption) {
+    if (!activeAiAssistantId) {
+        alert('请先选择一个AI助手进行对话！');
+        return;
+    }
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    addMessageToChat('', 'user', messageId, 'emoji', imageUrl, caption);
+    if (!chatHistories[activeAiAssistantId]) {
+        chatHistories[activeAiAssistantId] = [];
+    }
+    chatHistories[activeAiAssistantId].push({
+        id: messageId,
+        role: 'user',
+        content: caption || '发送了一个表情包',
+        type: 'emoji',
+        imageUrl: imageUrl,
+        caption: caption
+    });
+    localStorage.setItem(CHAT_HISTORIES_STORAGE_KEY, JSON.stringify(chatHistories));
+}
+
+function editExistingEmojiCaption(emojiId) {
+    const emoji = emojiLibrary.find(e => e.id === emojiId);
+    if (!emoji) return;
+    editingEmojiId = emojiId;
+    emojiCaptionInput.value = emoji.caption || '';
+    emojiCaptionOverlay.classList.add('visible');
+}
+
+function enterEmojiDeleteMode() {
+    console.log('进入表情包删除模式');
+    isEmojiDeleteMode = true;
+    selectedEmojiIdsForDeletion = [];
+    updateEmojiPanelButtons();
+    loadEmojis();
+}
+
+function exitEmojiDeleteMode() {
+    console.log('退出表情包删除模式');
+    isEmojiDeleteMode = false;
+    selectedEmojiIdsForDeletion = [];
+    document.querySelectorAll('.emoji-item.selected-for-deletion').forEach(item => {
+        item.classList.remove('selected-for-deletion');
+    });
+    updateEmojiPanelButtons();
+    loadEmojis();
+}
+
+function toggleEmojiSelection(emojiId, itemElement) {
+    if (!isEmojiDeleteMode) return;
+    const isSelected = itemElement.classList.toggle('selected-for-deletion');
+    if (isSelected) {
+        if (!selectedEmojiIdsForDeletion.includes(emojiId)) {
+            selectedEmojiIdsForDeletion.push(emojiId);
+        }
+    } else {
+        selectedEmojiIdsForDeletion = selectedEmojiIdsForDeletion.filter(id => id !== emojiId);
+    }
+    updateEmojiPanelButtons();
+    console.log('选中的表情包ID:', selectedEmojiIdsForDeletion);
+    console.log('当前选中数量:', selectedEmojiIdsForDeletion.length);
+}
+
+function updateEmojiPanelButtons() {
+    const closeButton = document.getElementById('closeEmojiMainPanelButton');
+    const deleteButton = document.getElementById('deleteEmojiModeButton');
+    const addButton = document.getElementById('addEmojiButton');
+    const cancelButton = document.getElementById('cancelEmojiDeleteButton');
+    const confirmButton = document.getElementById('confirmEmojiDeleteButton');
+    if (!closeButton || !deleteButton || !addButton || !cancelButton || !confirmButton) {
+        console.error('表情包面板按钮元素未找到');
+        return;
+    }
+    if (isEmojiDeleteMode) {
+        closeButton.style.display = 'none';
+        deleteButton.style.display = 'none';
+        addButton.style.display = 'none';
+        cancelButton.style.display = 'inline-block';
+        if (selectedEmojiIdsForDeletion.length > 0) {
+            confirmButton.style.display = 'inline-block';
+            console.log('显示确定按钮，选中数量:', selectedEmojiIdsForDeletion.length);
+        } else {
+            confirmButton.style.display = 'none';
+            console.log('隐藏确定按钮，选中数量:', selectedEmojiIdsForDeletion.length);
+        }
+    } else {
+        closeButton.style.display = 'inline-block';
+        deleteButton.style.display = 'inline-block';
+        addButton.style.display = 'inline-block';
+        cancelButton.style.display = 'none';
+        confirmButton.style.display = 'none';
+    }
+}
+
+function performEmojiDeletion() {
+    if (selectedEmojiIdsForDeletion.length === 0) {
+        exitEmojiDeleteMode();
+        return;
+    }
+    emojiLibrary = emojiLibrary.filter(emoji => !selectedEmojiIdsForDeletion.includes(emoji.id));
+    localStorage.setItem(EMOJI_LIBRARY_STORAGE_KEY, JSON.stringify(emojiLibrary));
+    alert(`已成功删除 ${selectedEmojiIdsForDeletion.length} 个表情包！`);
+    exitEmojiDeleteMode();
+    loadEmojis();
+}
+
+function loadEmojis() {
+    emojiLibrary = JSON.parse(localStorage.getItem(EMOJI_LIBRARY_STORAGE_KEY)) || [];
+    emojiGridContainer.innerHTML = '';
+    if (emojiLibrary.length === 0) {
+        emojiGridContainer.innerHTML = '<p style="text-align: center; color: #888; margin-top: 20px; grid-column: 1 / -1;">暂无表情包，点击"+"添加。</p>';
+        return;
+    }
+    emojiLibrary.forEach(emoji => {
+        if (!emoji.id) { 
+            emoji.id = Date.now() + Math.random().toString(36).substr(2, 9); 
+        }
+        const emojiItem = document.createElement('div');
+        emojiItem.className = 'emoji-item';
+        emojiItem.setAttribute('data-emoji-id', emoji.id);
+        emojiItem.innerHTML = `<img src="${emoji.imageUrl}" alt="${emoji.caption || '表情包'}"><span class="emoji-label" data-emoji-id="${emoji.id}">${emoji.caption || '无备注'}</span>`;
+        if (isEmojiDeleteMode) {
+            emojiItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleEmojiSelection(emoji.id, emojiItem);
+            });
+            if (selectedEmojiIdsForDeletion.includes(emoji.id)) {
+                emojiItem.classList.add('selected-for-deletion');
+            }
+        } else {
+            const img = emojiItem.querySelector('img');
+            const label = emojiItem.querySelector('.emoji-label');
+            img.addEventListener('click', (e) => { 
+                e.stopPropagation(); 
+                sendEmoji(emoji.imageUrl, emoji.caption); 
+                closeEmojiMainPanel(); 
+            });
+            label.addEventListener('click', (e) => { 
+                e.stopPropagation(); 
+                editExistingEmojiCaption(emoji.id); 
+            });
+        }
+        emojiGridContainer.appendChild(emojiItem);
+    });
+    localStorage.setItem(EMOJI_LIBRARY_STORAGE_KEY, JSON.stringify(emojiLibrary));
+}
+
+// 事件监听器
+deleteEmojiModeButton.addEventListener('click', (e) => { e.stopPropagation(); enterEmojiDeleteMode(); });
+cancelEmojiDeleteButton.addEventListener('click', (e) => { e.stopPropagation(); exitEmojiDeleteMode(); });
+confirmEmojiDeleteButton.addEventListener('click', (e) => { e.stopPropagation(); performEmojiDeletion(); });
+closeEmojiMainPanelButton.addEventListener('click', (e) => { e.stopPropagation(); closeEmojiMainPanel(); });
+addEmojiButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    addEmojiOptionsOverlay.style.display = 'flex';
+    setTimeout(() => { addEmojiOptionsOverlay.classList.add('visible'); }, 10);
+});
+cancelAddEmojiOptionsButton.addEventListener('click', (e) => { e.stopPropagation(); closeAddEmojiOptionsOverlay(); });
+cancelEmojiCaptionButton.addEventListener('click', (e) => { e.stopPropagation(); closeEmojiCaptionOverlay(); });
+localUploadOption.addEventListener('click', () => { closeAddEmojiOptionsOverlay(); localEmojiFileInput.click(); });
+urlImportOption.addEventListener('click', () => {
+    closeAddEmojiOptionsOverlay();
+    const url = prompt('请输入表情包图片的URL地址：');
+    if (url && url.trim()) {
+        currentEmojiImageUrl = url.trim();
+        editingEmojiId = null; // 确保是添加模式
+        emojiCaptionInput.value = '';
+        emojiCaptionOverlay.classList.add('visible');
+    }
+});
+localEmojiFileInput.addEventListener('change', (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const imageUrl = event.target.result;
+                const newEmoji = {
+                    id: Date.now() + Math.random().toString(36).substr(2, 9),
+                    imageUrl: imageUrl,
+                    caption: file.name.split('.').slice(0, -1).join('.') || '无备注'
+                };
+                emojiLibrary.push(newEmoji);
+                localStorage.setItem(EMOJI_LIBRARY_STORAGE_KEY, JSON.stringify(emojiLibrary));
+                loadEmojis();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    e.target.value = '';
+});
+saveEmojiCaptionButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (currentEmojiImageUrl && !editingEmojiId) {
+        const newEmoji = {
+            id: Date.now() + Math.random().toString(36).substr(2, 9),
+            imageUrl: currentEmojiImageUrl,
+            caption: emojiCaptionInput.value.trim() || '无备注'
+        };
+        emojiLibrary.push(newEmoji);
+        localStorage.setItem(EMOJI_LIBRARY_STORAGE_KEY, JSON.stringify(emojiLibrary));
+        loadEmojis();
+        currentEmojiImageUrl = '';
+    } else if (editingEmojiId) {
+        const emoji = emojiLibrary.find(e => e.id === editingEmojiId);
+        if (emoji) {
+            emoji.caption = emojiCaptionInput.value.trim() || '无备注';
+            localStorage.setItem(EMOJI_LIBRARY_STORAGE_KEY, JSON.stringify(emojiLibrary));
+            loadEmojis();
+        }
+        editingEmojiId = null;
+    }
+    closeEmojiCaptionOverlay();
+});
+
+// --- 语音录制功能 ---
+const voiceRecordPanel = document.getElementById('voiceRecordPanel');
+const closeVoicePanelButton = document.getElementById('closeVoicePanel');
+const voiceRecordButton = document.getElementById('voiceRecordButton');
+const voiceHintText = document.getElementById('voiceHintText');
+const recordingTimerDisplay = document.getElementById('recordingTimer');
+
+// --- MODIFIED JS START ---
+function openVoiceRecordPanel() {
+    console.log('打开语音录制面板');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('您的浏览器不支持语音录制功能');
+        return;
+    }
+    initSpeechRecognition();
+    voiceRecordPanel.style.display = 'flex';
+    setTimeout(() => {
+        voiceRecordPanel.classList.add('visible');
+    }, 10);
+}
+
+function closeVoiceRecordPanel() {
+    console.log('关闭语音录制面板');
+    if (isRecording) {
+        stopRecording();
+    }
+    if (isRecognizing && recognition) {
+        recognition.stop();
+        isRecognizing = false;
+    }
+    currentAudioBlob = null;
+    currentVoiceDuration = 0;
+    recognizedText = '';
+    document.getElementById('voiceRecognitionArea').classList.remove('visible');
+    voiceRecordPanel.classList.remove('visible');
+    setTimeout(() => {
+        voiceRecordPanel.style.display = 'none';
+    }, 300);
+}
+
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            } 
+        });
+        
+        mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'audio/webm;codecs=opus'
+        });
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            currentAudioBlob = audioBlob;
+            currentVoiceDuration = Math.round((Date.now() - recordingStartTime) / 1000);
+            stream.getTracks().forEach(track => track.stop());
+            startSpeechRecognition();
+        };
+        
+        mediaRecorder.start();
+        isRecording = true;
+        recordingStartTime = Date.now();
+        
+        voiceRecordButton.classList.add('recording');
+        voiceHintText.textContent = '点击停止录制';
+        recordingTimerDisplay.classList.add('visible');
+        
+        recordingTimer = setInterval(() => {
+            const elapsed = Math.round((Date.now() - recordingStartTime) / 1000);
+            recordingTimerDisplay.textContent = `${elapsed}s`;
+        }, 100);
+        
+        console.log('开始录音');
+        
+    } catch (error) {
+        console.error('无法访问麦克风：', error);
+        let errorMsg = '无法访问麦克风，请检查权限设置';
+        if (error.name === 'NotAllowedError') {
+            errorMsg = '麦克风权限被拒绝，请在浏览器设置中允许访问麦克风';
+        } else if (error.name === 'NotFoundError') {
+            errorMsg = '未找到麦克风设备';
+        } else if (error.name === 'NotSupportedError') {
+            errorMsg = '浏览器不支持语音录制';
+        }
+        alert(errorMsg);
+        closeVoiceRecordPanel();
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        isRecording = false;
+        
+        if (recordingTimer) {
+            clearInterval(recordingTimer);
+            recordingTimer = null;
+        }
+        
+        voiceRecordButton.classList.remove('recording');
+        voiceRecordButton.classList.add('processing');
+        voiceHintText.textContent = '正在识别语音...';
+        voiceHintText.classList.add('recording');
+        recordingTimerDisplay.classList.remove('visible');
+        recordingTimerDisplay.textContent = '0s';
+        
+        console.log('停止录音，开始识别');
+    }
+}
+
+function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        console.warn('浏览器不支持语音识别，将使用模拟文本');
+        return;
+    }
+    recognition = new SpeechRecognition();
+    recognition.lang = 'zh-CN';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (event) => {
+        const result = event.results[0][0].transcript;
+        recognizedText = result;
+        console.log('识别结果:', recognizedText);
+        showRecognitionResult(recognizedText);
+    };
+    recognition.onerror = (event) => {
+        console.error('语音识别错误:', event.error);
+        const simulatedText = '这是模拟的语音识别结果';
+        recognizedText = simulatedText;
+        showRecognitionResult(simulatedText);
+    };
+    recognition.onend = () => {
+        isRecognizing = false;
+        console.log('语音识别结束');
+    };
+}
+
+function startSpeechRecognition() {
+    if (recognition && !isRecognizing) {
+        try {
+            isRecognizing = true;
+            recognition.start();
+        } catch (error) {
+            console.error('启动语音识别失败:', error);
+            const simulatedText = `语音消息 ${currentVoiceDuration}秒`;
+            recognizedText = simulatedText;
+            showRecognitionResult(simulatedText);
+        }
+    } else {
+        const simulatedText = `语音消息 ${currentVoiceDuration}秒`;
+        recognizedText = simulatedText;
+        showRecognitionResult(simulatedText);
+    }
+}
+
+function showRecognitionResult(text) {
+    const voiceRecognitionArea = document.getElementById('voiceRecognitionArea');
+    const voiceTextDisplay = document.getElementById('voiceTextDisplay');
+    voiceTextDisplay.value = text;
+    voiceRecognitionArea.classList.add('visible');
+    voiceRecordButton.classList.remove('processing');
+    voiceHintText.textContent = '点击开始录制';
+    voiceHintText.classList.remove('recording');
+}
+
+function confirmSendVoice() {
+    const voiceTextDisplay = document.getElementById('voiceTextDisplay');
+    const finalText = voiceTextDisplay.value.trim();
+    if (!activeAiAssistantId) {
+        alert('请先选择一个AI助手进行对话！');
+        return;
+    }
+    if (currentAudioBlob && currentVoiceDuration > 0) {
+        const audioUrl = URL.createObjectURL(currentAudioBlob);
+        const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        addVoiceMessageToChat(currentVoiceDuration, 'user', messageId, audioUrl, finalText);
+        if (!chatHistories[activeAiAssistantId]) {
+            chatHistories[activeAiAssistantId] = [];
+        }
+        chatHistories[activeAiAssistantId].push({
+            id: messageId,
+            role: 'user',
+            content: finalText || `[语音消息 ${currentVoiceDuration}s]`,
+            type: 'voice',
+            duration: currentVoiceDuration,
+            audioUrl: audioUrl,
+            voiceText: finalText
+        });
+        localStorage.setItem(CHAT_HISTORIES_STORAGE_KEY, JSON.stringify(chatHistories));
+        closeVoiceRecordPanel();
+    }
+}
+
+function cancelSendVoice() {
+    closeVoiceRecordPanel();
+}
+
+function addVoiceMessageToChat(duration, role, messageId, audioUrl, voiceText = '') {
+    const msgId = messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date();
+    const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const existingMessage = document.querySelector(`[data-message-id="${msgId}"]`);
+    if (existingMessage) {
+        console.warn(`消息ID ${msgId} 已存在，跳过渲染`);
+        return;
+    }
+    const messageWrapper = document.createElement('div');
+    const cssRole = role === 'assistant' ? 'ai' : role;
+    messageWrapper.className = `message-wrapper ${cssRole}`;
+    messageWrapper.setAttribute('data-message-id', msgId);
+    const messageBubble = document.createElement('div');
+    messageBubble.className = `message-bubble ${cssRole}`;
+    const avatarContainer = document.createElement('div');
+    avatarContainer.className = 'avatar-container';
+    const avatarElement = document.createElement('div');
+    avatarElement.className = 'message-avatar';
+    const currentAssistant = aiAssistants.find(a => a.id == activeAiAssistantId);
+    let avatarBg;
+    if (cssRole === 'user') {
+        avatarBg = userPreset.avatarUrl ? `url('${userPreset.avatarUrl}')` : DEFAULT_AI_AVATAR_URL;
+    } else {
+        avatarBg = currentAssistant && currentAssistant.avatar ? `url('${currentAssistant.avatar}')` : DEFAULT_AI_AVATAR_URL;
+    }
+    avatarElement.style.backgroundImage = avatarBg;
+    const timestampElement = document.createElement('div');
+    timestampElement.className = 'message-timestamp';
+    timestampElement.textContent = timestamp;
+    avatarContainer.appendChild(avatarElement);
+    avatarContainer.appendChild(timestampElement);
+    const messageContentElement = document.createElement('div');
+    messageContentElement.className = 'message-content voice';
+    messageContentElement.innerHTML = `
+        <span class="voice-duration">${duration}s</span>
+        <span class="voice-wave">▶︎ ၊၊||၊|။||||။</span>
+    `;
+    if (voiceText) {
+        const voiceTextPopup = document.createElement('div');
+        voiceTextPopup.className = 'voice-text-popup';
+        voiceTextPopup.textContent = voiceText.replace(/[。！？.!?]+$/, '');
+        messageContentElement.appendChild(voiceTextPopup);
+        messageContentElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (voiceTextPopup.classList.contains('visible')) {
+                voiceTextPopup.classList.remove('visible');
+                if (audioUrl) {
+                    const audio = new Audio(audioUrl);
+                    messageContentElement.classList.add('playing');
+                    audio.play();
+                    audio.onended = () => {
+                        messageContentElement.classList.remove('playing');
+                    };
+                }
+            } else {
+                voiceTextPopup.classList.add('visible');
+                setTimeout(() => {
+                    voiceTextPopup.classList.remove('visible');
+                }, 3000);
+            }
+        });
+    } else {
+        messageContentElement.addEventListener('click', () => {
+            if (audioUrl) {
+                const audio = new Audio(audioUrl);
+                messageContentElement.classList.add('playing');
+                audio.play();
+                audio.onended = () => {
+                    messageContentElement.classList.remove('playing');
+                };
+            }
+        });
+    }
+    messageBubble.appendChild(avatarContainer);
+    messageBubble.appendChild(messageContentElement);
+    messageWrapper.appendChild(messageBubble);
+    chatHistoryDiv.appendChild(messageWrapper);
+    messageWrapper.addEventListener('click', (e) => {
+        if (isMessageSelectionMode) {
+            e.stopPropagation();
+            const clickedMsgId = messageWrapper.getAttribute('data-message-id');
+            const isSelected = messageWrapper.classList.toggle('selected-for-deletion');
+            if (isSelected) {
+                if (!selectedMessageIdsForDeletion.includes(clickedMsgId)) {
+                    selectedMessageIdsForDeletion.push(clickedMsgId);
+                }
+            } else {
+                selectedMessageIdsForDeletion = selectedMessageIdsForDeletion.filter(id => id !== clickedMsgId);
+            }
+            updateTopBarButtons();
+        }
+    });
+    chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+}
+
+voiceRecordButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!isRecording && !isRecognizing) {
+        startRecording();
+    } else if (isRecording) {
+        stopRecording();
+    }
+});
+
+closeVoicePanelButton.addEventListener('click', closeVoiceRecordPanel);
+document.getElementById('voiceConfirmBtn').addEventListener('click', confirmSendVoice);
+document.getElementById('voiceCancelBtn').addEventListener('click', cancelSendVoice);
+// --- MODIFIED JS END ---
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadAiAssistantsList();
+    if (activeAiAssistantId) {
+        const assistant = aiAssistants.find(a => a.id == activeAiAssistantId);
+        if (assistant) {
+            chatWindowTitle.textContent = assistant.name;
+            loadChatHistory(activeAiAssistantId);
+        } else {
+            activeAiAssistantId = null;
+            localStorage.removeItem(ACTIVE_AI_ASSISTANT_ID_STORAGE_KEY);
+        }
+    }
+    updateTopBarButtons();
+    const activeScreen = document.querySelector('.screen.active');
+    if (floatingBallContainer && activeScreen) {
+        floatingBallContainer.style.display = activeScreen.id === 'qqChatScreen' ? 'flex' : 'none';
+    }
+    document.getElementById('tabChat').addEventListener('click', () => switchQQTab('chat'));
+    document.getElementById('tabDiscover').addEventListener('click', () => switchQQTab('discover'));
+    document.getElementById('tabMe').addEventListener('click', () => switchQQTab('me'));
+    updateEmojiPanelButtons(); 
+});
+</script>
+</body>
+</html>
